@@ -4,12 +4,14 @@ import React, { useRef, useState, useEffect, useCallback } from "react";
 
 interface DrawingPadProps {
   wordToPractice?: string;
+  showGuidelineWord?: boolean;
   onClear?: () => void;
   className?: string;
 }
 
 export default function DrawingPad({
   wordToPractice = "",
+  showGuidelineWord = false,
   onClear,
   className = "",
 }: DrawingPadProps) {
@@ -179,11 +181,11 @@ export default function DrawingPad({
 
   return (
     <div className={`flex flex-col gap-3 w-full ${className}`}>
-      {/* Controls & Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-2 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+      {/* Controls & Toolbar (Clean Light Theme) */}
+      <div className="flex flex-wrap items-center justify-between gap-2 bg-white/95 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-slate-200 shadow-2xs">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider mr-1">
-            ปากกา (Pencil)
+          <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider mr-1">
+            🎨 สีปากกา
           </span>
           {[
             { color: "#4f46e5", label: "น้ำเงิน Indigo" },
@@ -199,7 +201,7 @@ export default function DrawingPad({
               aria-pressed={strokeColor === item.color}
               className={`w-7 h-7 rounded-full border-2 transition-transform ${
                 strokeColor === item.color
-                  ? "scale-110 border-indigo-600 ring-2 ring-indigo-300 dark:ring-indigo-700"
+                  ? "scale-110 border-indigo-600 ring-2 ring-indigo-200 shadow-xs"
                   : "border-transparent hover:scale-105"
               }`}
               style={{ backgroundColor: item.color }}
@@ -213,7 +215,7 @@ export default function DrawingPad({
             onClick={handleUndo}
             disabled={history.length === 0}
             aria-label="ย้อนกลับการเขียนก่อนหน้า (Undo)"
-            className="px-3 py-1.5 text-xs font-medium rounded-lg text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="px-3 py-1.5 text-xs font-medium rounded-xl text-slate-700 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors border border-slate-200/80"
           >
             ↩️ ย้อนกลับ (Undo)
           </button>
@@ -221,23 +223,35 @@ export default function DrawingPad({
             type="button"
             onClick={handleClear}
             aria-label="ล้างกระดานเขียนคำศัพท์ (Clear Canvas)"
-            className="px-3 py-1.5 text-xs font-medium rounded-lg text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition-colors"
+            className="px-3 py-1.5 text-xs font-medium rounded-xl text-rose-600 bg-rose-50 hover:bg-rose-100 transition-colors border border-rose-200/80"
           >
             🗑️ ล้างกระดาน (Clear)
           </button>
         </div>
       </div>
 
-      {/* iPad Apple Pencil Canvas Area */}
-      <div className="relative w-full h-[320px] sm:h-[400px] md:h-[460px] bg-white dark:bg-slate-900 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 overflow-hidden shadow-inner">
-        {/* Subtle Watermark Word Guideline for Practice */}
-        {!hasDrawn && wordToPractice && (
+      {/* iPad Apple Pencil Large Clean Canvas Area */}
+      <div className="relative w-full h-[360px] sm:h-[440px] md:h-[500px] bg-white rounded-3xl border-2 border-slate-300 overflow-hidden shadow-inner">
+        {/* Subtle Watermark Guideline (Only when showGuidelineWord is true) */}
+        {!hasDrawn && wordToPractice && showGuidelineWord && (
           <div
-            className="absolute inset-0 flex items-center justify-center pointer-events-none select-none opacity-10 dark:opacity-5 text-center px-4"
+            className="absolute inset-0 flex items-center justify-center pointer-events-none select-none opacity-10 text-center px-4"
             aria-hidden="true"
           >
-            <span className="text-5xl sm:text-7xl md:text-8xl font-black tracking-widest text-slate-900 dark:text-slate-100 font-mono">
+            <span className="text-5xl sm:text-7xl md:text-8xl font-black tracking-widest text-slate-900 font-mono">
               {wordToPractice}
+            </span>
+          </div>
+        )}
+
+        {/* Clean iPad handwriting guidance watermark/lines when blank */}
+        {!hasDrawn && (
+          <div
+            className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none opacity-20 text-center px-6"
+            aria-hidden="true"
+          >
+            <span className="text-sm sm:text-base font-semibold text-slate-400 border-b border-dashed border-slate-300 pb-1">
+              ✍️ พื้นที่สำหรับเขียนคำศัพท์ด้วย Apple Pencil (หรือนิ้วมือ)
             </span>
           </div>
         )}
@@ -251,7 +265,7 @@ export default function DrawingPad({
           onPointerLeave={handlePointerUp}
           aria-label={`กระดานคัดเขียนคำศัพท์ภาษาอังกฤษสำหรับ Apple Pencil (iPad Drawing Canvas for word: ${wordToPractice})`}
           role="img"
-          className="w-full h-full cursor-crosshair focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-2xl"
+          className="w-full h-full cursor-crosshair focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-3xl"
           style={{ touchAction: "none" }} // CRITICAL: Prevents iPad Safari page scrolling/zooming when drawing with Apple Pencil
           tabIndex={0}
         />

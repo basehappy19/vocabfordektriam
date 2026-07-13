@@ -33,14 +33,17 @@ export default function PracticeSession() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<"GUEST" | "AUTHENTICATED">("GUEST");
-  const [showMeaning, setShowMeaning] = useState(false);
+  
+  // Primary practice mode requested by user: Thai meaning -> write English word ("ให้โหมดภาษาไทยให้เขียนอังฤษเป็นหลัก")
+  const [practiceDirection, setPracticeDirection] = useState<"TH_TO_EN" | "EN_TO_TH">("TH_TO_EN");
+  const [showAnswer, setShowAnswer] = useState(false);
   const [isReviewing, setIsReviewing] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
 
   const fetchNextVocab = useCallback(async () => {
     setLoading(true);
     setError(null);
-    setShowMeaning(false);
+    setShowAnswer(false);
 
     try {
       const url = selectedCategory
@@ -71,7 +74,6 @@ export default function PracticeSession() {
     if (!vocab) return;
 
     if (mode === "GUEST") {
-      // Guests don't save progress; just fetch next random word
       fetchNextVocab();
       return;
     }
@@ -100,165 +102,250 @@ export default function PracticeSession() {
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto flex flex-col gap-6 p-4 sm:p-6">
-      {/* Top Banner Status (Guest vs Authenticated) */}
-      <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
-        <div className="flex items-center gap-3">
-          <span className="flex h-3 w-3 relative">
+    <div className="w-full max-w-4xl mx-auto flex flex-col gap-6 p-4 sm:p-6 text-slate-900 font-sans">
+      {/* Top Controls & Mode Switcher (Clean Light Theme) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs">
+        {/* Guest vs Authenticated Status */}
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-2.5 w-2.5 relative">
             <span
               className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
                 mode === "AUTHENTICATED" ? "bg-emerald-400" : "bg-amber-400"
               }`}
             />
             <span
-              className={`relative inline-flex rounded-full h-3 w-3 ${
+              className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
                 mode === "AUTHENTICATED" ? "bg-emerald-500" : "bg-amber-500"
               }`}
             />
           </span>
           <div>
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 block">
-              โหมดการใช้งาน (Mode)
-            </span>
-            <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
-              {mode === "AUTHENTICATED"
-                ? "📚 ระบบ Spaced Repetition (บันทึกความคืบหน้า Leitner Box)"
-                : "👋 ผู้ใช้งานทั่วไป Guest (สุ่มฝึกศัพท์ - ไม่บันทึกความจำ)"}
+            <span className="text-[11px] font-semibold text-slate-500 block">
+              สถานะ: {mode === "AUTHENTICATED" ? "บันทึกความคืบหน้า (Leitner SRS)" : "ผู้ใช้งานทั่วไป Guest (สุ่มศัพท์)"}
             </span>
           </div>
         </div>
 
-        {/* Category Filter */}
-        <div className="flex items-center gap-2">
-          <label htmlFor="category-select" className="text-xs font-semibold text-slate-500">
-            หมวดหมู่:
-          </label>
-          <select
-            id="category-select"
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            aria-label="เลือกหมวดหมู่คำศัพท์เตรียมสอบ"
-            className="text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-          >
-            <option value="">ทั้งหมด (All TCAS/TGAT)</option>
-            <option value="TGAT-Eng">TGAT English Core</option>
-            <option value="A-Level">A-Level Vocabulary</option>
-            <option value="TCAS-Academic">TCAS Academic Idioms</option>
-          </select>
+        {/* Practice Direction Mode Switcher & Category Filter */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200/80">
+            <button
+              type="button"
+              onClick={() => {
+                setPracticeDirection("TH_TO_EN");
+                setShowAnswer(false);
+              }}
+              aria-pressed={practiceDirection === "TH_TO_EN"}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                practiceDirection === "TH_TO_EN"
+                  ? "bg-white text-indigo-700 shadow-2xs border border-slate-200/60"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              🇹🇭 แปลไทย ➡️ เขียนอังกฤษ (หลัก)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setPracticeDirection("EN_TO_TH");
+                setShowAnswer(false);
+              }}
+              aria-pressed={practiceDirection === "EN_TO_TH"}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                practiceDirection === "EN_TO_TH"
+                  ? "bg-white text-indigo-700 shadow-2xs border border-slate-200/60"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              🇬🇧 ศัพท์อังกฤษ ➡️ แปลไทย
+            </button>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <label htmlFor="category-select" className="text-xs font-semibold text-slate-600">
+              หมวด:
+            </label>
+            <select
+              id="category-select"
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              aria-label="เลือกหมวดหมู่คำศัพท์เตรียมสอบ"
+              className="text-xs font-medium rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            >
+              <option value="">ทั้งหมด (All TCAS/TGAT)</option>
+              <option value="TGAT-Eng">TGAT English Core</option>
+              <option value="A-Level">A-Level Vocabulary</option>
+              <option value="TCAS-Academic">TCAS Academic Idioms</option>
+            </select>
+          </div>
         </div>
       </div>
 
+      {/* Loading State */}
       {loading ? (
         <div
           role="status"
           aria-label="กำลังโหลดคำศัพท์ถัดไป (Loading next vocabulary item)"
-          className="w-full flex flex-col items-center justify-center p-16 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-lg gap-4 animate-pulse"
+          className="w-full flex flex-col items-center justify-center p-16 bg-white rounded-3xl border border-slate-200 shadow-md gap-4 animate-pulse"
         >
-          <div className="h-10 w-48 bg-slate-200 dark:bg-slate-800 rounded-xl" />
-          <div className="h-6 w-32 bg-slate-100 dark:bg-slate-800 rounded-lg" />
+          <div className="h-10 w-64 bg-slate-200 rounded-xl" />
+          <div className="h-6 w-40 bg-slate-100 rounded-lg" />
+          <div className="h-80 w-full bg-slate-100 rounded-2xl mt-4" />
         </div>
       ) : error ? (
         <div
           role="alert"
-          className="p-6 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-2xl text-rose-700 dark:text-rose-300 text-center flex flex-col items-center gap-3"
+          className="p-8 bg-rose-50 border border-rose-200 rounded-3xl text-rose-800 text-center flex flex-col items-center gap-4"
         >
-          <span className="text-2xl">⚠️</span>
-          <p className="font-semibold">{error}</p>
+          <span className="text-3xl">⚠️</span>
+          <p className="font-bold text-lg">{error}</p>
           <button
             type="button"
             onClick={fetchNextVocab}
             aria-label="ลองโหลดคำศัพท์ใหม่อีกครั้ง"
-            className="px-4 py-2 bg-rose-600 text-white rounded-xl text-sm font-medium hover:bg-rose-700 transition-colors"
+            className="px-5 py-2.5 bg-rose-600 text-white rounded-xl text-sm font-bold hover:bg-rose-700 shadow-xs transition-colors"
           >
             ลองใหม่อีกครั้ง (Retry)
           </button>
         </div>
       ) : vocab ? (
-        <div className="flex flex-col gap-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-xl">
-          {/* Header Info & Badges */}
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-4">
+        <div className="flex flex-col gap-6 bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-md">
+          {/* Top Badges */}
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-4">
             <div className="flex items-center gap-2">
-              <span className="px-3 py-1 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 rounded-full text-xs font-bold uppercase tracking-wider border border-indigo-200 dark:border-indigo-800">
+              <span className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-xs font-bold uppercase tracking-wider border border-indigo-200/80">
                 {vocab.category}
               </span>
-              <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-full text-xs font-semibold">
+              <span className="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-xs font-semibold">
                 {vocab.partOfSpeech}
               </span>
-              <span className="px-2.5 py-1 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 rounded-full text-xs font-bold">
+              <span className="px-2.5 py-1 bg-amber-50 text-amber-700 rounded-full text-xs font-bold border border-amber-200/60">
                 Level {vocab.difficultyLevel} ⭐
               </span>
             </div>
 
             {vocab.meta?.userProgress && (
-              <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
-                <span className="px-2.5 py-1 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 rounded-lg font-bold">
+              <div className="flex items-center gap-2 text-xs font-medium text-slate-600">
+                <span className="px-2.5 py-1 bg-purple-50 text-purple-700 rounded-lg font-bold border border-purple-200/60">
                   📦 Leitner Box {vocab.meta.userProgress.boxLevel}/5
                 </span>
-                <span>🔥 Streak: {vocab.meta.userProgress.streak}</span>
+                <span className="font-semibold text-slate-700">🔥 Streak: {vocab.meta.userProgress.streak}</span>
               </div>
             )}
           </div>
 
-          {/* Main Target Word & Pronunciation */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-4">
-            <div className="flex flex-col gap-1">
-              <div className="flex items-baseline gap-3">
-                <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-slate-900 dark:text-white">
-                  {vocab.word}
-                </h1>
-                {vocab.phonetic && (
-                  <span className="text-lg sm:text-xl font-mono text-slate-400">
-                    /{vocab.phonetic}/
+          {/* Primary Prompt Display Card based on Direction */}
+          {practiceDirection === "TH_TO_EN" ? (
+            /* TH_TO_EN Mode: Show Thai Meaning Prominently at top -> write English */
+            <div className="flex flex-col gap-3 py-2">
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-indigo-600">
+                <span>📌 โจทย์ความหมายภาษาไทย (เขียนคำศัพท์อังกฤษด้านล่าง)</span>
+              </div>
+              <div className="p-6 bg-slate-50 border border-slate-200/80 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
+                <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-900 leading-snug">
+                  {vocab.meaning}
+                </h2>
+                {!showAnswer ? (
+                  <span className="text-xs font-semibold text-slate-500 bg-white px-3 py-1.5 rounded-xl border border-slate-200 whitespace-nowrap">
+                    ✍️ เขียนคำอังกฤษด้วย Apple Pencil
                   </span>
+                ) : (
+                  <div className="flex items-center gap-2 bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded-xl">
+                    <span className="text-xs font-bold text-indigo-700">เฉลยเปิดแล้ว</span>
+                  </div>
                 )}
               </div>
-              <p className="text-sm text-slate-500">
-                ใช้ Apple Pencil เขียนคัดคำศัพท์ลงบนกระดานด้านล่างเพื่อกระตุ้นความจำกล้ามเนื้อมือ (Muscle Memory)
-              </p>
             </div>
-
-            <div className="flex items-center gap-2 self-start sm:self-center">
-              <TTSButton text={vocab.word} lang="en-US" size="lg" label="ฟังเสียง (Listen)" />
+          ) : (
+            /* EN_TO_TH Mode: Show English Word at top -> write Thai meaning */
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-2">
+              <div className="flex flex-col gap-1">
+                <span className="text-xs font-bold uppercase tracking-wider text-indigo-600">
+                  📌 โจทย์คำศัพท์ภาษาอังกฤษ (ทาย/เขียนคำแปลไทย)
+                </span>
+                <div className="flex items-baseline gap-3 mt-1">
+                  <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-slate-900">
+                    {vocab.word}
+                  </h1>
+                  {vocab.phonetic && (
+                    <span className="text-lg sm:text-xl font-mono text-slate-500 font-medium">
+                      /{vocab.phonetic}/
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 self-start sm:self-center">
+                <TTSButton text={vocab.word} lang="en-US" size="lg" label="ฟังเสียง (Listen)" />
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Dynamic Lazy-Loaded iPad Apple Pencil Canvas */}
-          <CanvasLoader wordToPractice={vocab.word} />
+          {/* iPad Apple Pencil Handwriting Pad */}
+          <CanvasLoader
+            wordToPractice={vocab.word}
+            showGuidelineWord={practiceDirection === "EN_TO_TH" || showAnswer}
+          />
 
-          {/* Meaning & AI Example Sentence Accordion */}
+          {/* Reveal Section & AI Example Sentences */}
           <div className="flex flex-col gap-4 mt-2">
-            {!showMeaning ? (
+            {!showAnswer ? (
               <button
                 type="button"
-                onClick={() => setShowMeaning(true)}
-                aria-label="ตรวจคำแปลและประโยคตัวอย่างภาษาอังกฤษ"
-                className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl shadow-lg shadow-indigo-600/25 transition-all transform hover:-translate-y-0.5 active:translate-y-0 text-base flex items-center justify-center gap-2"
+                onClick={() => setShowAnswer(true)}
+                aria-label="เฉลยคำศัพท์ ตรวจคำแปล และดูประโยคตัวอย่างจาก AI"
+                className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-extrabold rounded-2xl shadow-md shadow-indigo-600/20 transition-all text-base flex items-center justify-center gap-2"
               >
-                <span>🔍 ตรวจคำแปลและดูประโยคตัวอย่าง (Show Meaning & AI Example)</span>
+                <span>
+                  {practiceDirection === "TH_TO_EN"
+                    ? "👁️ ดูเฉลยคำศัพท์ภาษาอังกฤษ & ประโยคตัวอย่าง AI (Reveal Answer)"
+                    : "👁️ ดูเฉลยความหมายไทย & ประโยคตัวอย่าง AI"}
+                </span>
               </button>
             ) : (
-              <div className="flex flex-col gap-4 p-6 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 animate-fadeIn">
-                <div className="flex flex-col gap-1 border-b border-slate-200 dark:border-slate-700 pb-3">
-                  <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-                    คำแปลและความหมาย (Meaning)
-                  </span>
-                  <p className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-slate-100">
-                    {vocab.meaning}
-                  </p>
-                </div>
+              <div className="flex flex-col gap-5 p-6 sm:p-8 bg-slate-50 rounded-2xl border border-slate-200 animate-fadeIn shadow-2xs">
+                {/* Revealed Answer Box */}
+                {practiceDirection === "TH_TO_EN" ? (
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 bg-white border border-indigo-200 rounded-2xl shadow-xs">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs font-bold uppercase tracking-wider text-indigo-600">
+                        ✨ เฉลยคำศัพท์ภาษาอังกฤษ (Answer Word)
+                      </span>
+                      <div className="flex items-baseline gap-3">
+                        <span className="text-3xl sm:text-4xl font-black text-slate-900">
+                          {vocab.word}
+                        </span>
+                        {vocab.phonetic && (
+                          <span className="text-base sm:text-lg font-mono text-slate-500 font-medium">
+                            /{vocab.phonetic}/
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <TTSButton text={vocab.word} lang="en-US" size="lg" label="ฟังเสียงคำศัพท์" />
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-1 p-5 bg-white border border-indigo-200 rounded-2xl shadow-xs">
+                    <span className="text-xs font-bold uppercase tracking-wider text-indigo-600">
+                      ✨ เฉลยคำแปลและความหมาย (Meaning)
+                    </span>
+                    <p className="text-xl sm:text-2xl font-bold text-slate-900">
+                      {vocab.meaning}
+                    </p>
+                  </div>
+                )}
 
                 {/* AI Example Sentence Block */}
                 {vocab.exampleSentence && (
                   <div className="flex flex-col gap-2 pt-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
                         <span>💡 ประโยคตัวอย่างเตรียมสอบ (Example Sentence)</span>
                         {vocab.meta?.wasAiGenerated ? (
-                          <span className="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 rounded text-[10px] font-bold">
+                          <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded text-[10px] font-bold border border-emerald-200">
                             🤖 AI Generated Now (Lazy-Cached to DB)
                           </span>
                         ) : (
-                          <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 rounded text-[10px] font-bold">
+                          <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-[10px] font-bold border border-blue-200">
                             ⚡ Served Direct from DB (No AI Cost)
                           </span>
                         )}
@@ -270,12 +357,12 @@ export default function PracticeSession() {
                         label="ฟังประโยค"
                       />
                     </div>
-                    <blockquote className="p-4 bg-white dark:bg-slate-900 rounded-xl border-l-4 border-indigo-500 shadow-sm flex flex-col gap-1.5">
-                      <p className="text-base sm:text-lg font-medium text-slate-800 dark:text-slate-200 italic">
+                    <blockquote className="p-4 sm:p-5 bg-white rounded-xl border-l-4 border-indigo-600 shadow-2xs flex flex-col gap-2 border border-slate-200/80">
+                      <p className="text-base sm:text-lg font-medium text-slate-900 italic leading-relaxed">
                         &ldquo;{vocab.exampleSentence}&rdquo;
                       </p>
                       {vocab.exampleTarget && (
-                        <p className="text-sm font-semibold text-slate-600 dark:text-slate-400">
+                        <p className="text-sm font-semibold text-slate-700 pt-1 border-t border-slate-100">
                           🇹🇭 คำแปล: {vocab.exampleTarget}
                         </p>
                       )}
@@ -283,9 +370,9 @@ export default function PracticeSession() {
                   </div>
                 )}
 
-                {/* Spaced Repetition Grading Buttons / Next Action */}
-                <div className="flex flex-col gap-2 pt-4 border-t border-slate-200 dark:border-slate-700">
-                  <span className="text-xs font-bold text-center text-slate-500 mb-1">
+                {/* Spaced Repetition Leitner Box Grading Buttons */}
+                <div className="flex flex-col gap-3 pt-4 border-t border-slate-200">
+                  <span className="text-xs font-bold text-center text-slate-600 mb-1">
                     {mode === "AUTHENTICATED"
                       ? "ให้คะแนนความจำของคุณเพื่อปรับรอบทบทวนถัดไป (Spaced Repetition Leitner Box Algorithm):"
                       : "กดเพื่อสุ่มคำศัพท์ถัดไป (Guest Mode):"}
@@ -298,10 +385,10 @@ export default function PracticeSession() {
                         disabled={isReviewing}
                         onClick={() => handleSrsReview("again")}
                         aria-label="จำไม่ได้เลย กลับไปเริ่มทบทวนใหม่ในกล่อง 1 (Again / Box 1)"
-                        className="flex flex-col items-center justify-center p-3 rounded-xl bg-rose-100 hover:bg-rose-200 dark:bg-rose-950/60 dark:hover:bg-rose-900 text-rose-800 dark:text-rose-200 font-bold transition-all border border-rose-300 dark:border-rose-800"
+                        className="flex flex-col items-center justify-center p-3 rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-900 font-bold transition-all border border-rose-300 shadow-2xs"
                       >
                         <span className="text-sm">❌ จำไม่ได้ (Again)</span>
-                        <span className="text-[11px] opacity-75 font-normal">ทบทวนพรุ่งนี้ (Box 1)</span>
+                        <span className="text-[11px] opacity-80 font-normal">ทบทวนพรุ่งนี้ (Box 1)</span>
                       </button>
 
                       <button
@@ -309,10 +396,10 @@ export default function PracticeSession() {
                         disabled={isReviewing}
                         onClick={() => handleSrsReview("hard")}
                         aria-label="จำยาก ต้องใช้ความคิด (Hard / Same Box)"
-                        className="flex flex-col items-center justify-center p-3 rounded-xl bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/60 dark:hover:bg-amber-900 text-amber-800 dark:text-amber-200 font-bold transition-all border border-amber-300 dark:border-amber-800"
+                        className="flex flex-col items-center justify-center p-3 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold transition-all border border-amber-300 shadow-2xs"
                       >
                         <span className="text-sm">⚠️ จำยาก (Hard)</span>
-                        <span className="text-[11px] opacity-75 font-normal">ทบทวนรอบเดิม</span>
+                        <span className="text-[11px] opacity-80 font-normal">ทบทวนรอบเดิม</span>
                       </button>
 
                       <button
@@ -320,10 +407,10 @@ export default function PracticeSession() {
                         disabled={isReviewing}
                         onClick={() => handleSrsReview("good")}
                         aria-label="จำได้ดี เลื่อนระดับกล่องขึ้น 1 ชั้น (Good / Box +1)"
-                        className="flex flex-col items-center justify-center p-3 rounded-xl bg-blue-100 hover:bg-blue-200 dark:bg-blue-950/60 dark:hover:bg-blue-900 text-blue-800 dark:text-blue-200 font-bold transition-all border border-blue-300 dark:border-blue-800"
+                        className="flex flex-col items-center justify-center p-3 rounded-xl bg-blue-100 hover:bg-blue-200 text-blue-900 font-bold transition-all border border-blue-300 shadow-2xs"
                       >
                         <span className="text-sm">✅ จำได้ดี (Good)</span>
-                        <span className="text-[11px] opacity-75 font-normal">เลื่อนระดับ +1 กล่อง</span>
+                        <span className="text-[11px] opacity-80 font-normal">เลื่อนระดับ +1 กล่อง</span>
                       </button>
 
                       <button
@@ -331,10 +418,10 @@ export default function PracticeSession() {
                         disabled={isReviewing}
                         onClick={() => handleSrsReview("easy")}
                         aria-label="ง่ายมาก แม่นยำ เลื่อนระดับกล่องขึ้น 2 ชั้นหรือมาสเตอร์ (Easy / Box +2)"
-                        className="flex flex-col items-center justify-center p-3 rounded-xl bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-950/60 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-200 font-bold transition-all border border-emerald-300 dark:border-emerald-800"
+                        className="flex flex-col items-center justify-center p-3 rounded-xl bg-emerald-100 hover:bg-emerald-200 text-emerald-900 font-bold transition-all border border-emerald-300 shadow-2xs"
                       >
                         <span className="text-sm">🌟 ง่ายมาก (Easy)</span>
-                        <span className="text-[11px] opacity-75 font-normal">เลื่อนเร็ว +2 กล่อง</span>
+                        <span className="text-[11px] opacity-80 font-normal">เลื่อนเร็ว +2 กล่อง</span>
                       </button>
                     </div>
                   ) : (
@@ -342,7 +429,7 @@ export default function PracticeSession() {
                       type="button"
                       onClick={() => fetchNextVocab()}
                       aria-label="ฝึกคำศัพท์ถัดไป"
-                      className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow transition-colors text-center"
+                      className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-extrabold rounded-xl shadow-sm transition-colors text-center text-base"
                     >
                       ➡️ สุ่มฝึกคำศัพท์ถัดไป (Next Random Word)
                     </button>

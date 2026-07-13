@@ -47,6 +47,7 @@ const DynamicDrawingPad = dynamic(
 
 interface CanvasLoaderProps {
   wordToPractice?: string;
+  showGuidelineWord?: boolean;
   onClear?: () => void;
   className?: string;
 }

@@ -124,7 +124,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body
-        className="min-h-full flex flex-col font-sans bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 selection:bg-indigo-500 selection:text-white transition-colors duration-200"
+        className="min-h-full flex flex-col font-sans bg-[#f8fafc] text-[#0f172a] selection:bg-indigo-500 selection:text-white"
       >
         <a
           href="#main-content"
