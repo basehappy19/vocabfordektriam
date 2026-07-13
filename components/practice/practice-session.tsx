@@ -228,6 +228,15 @@ function checkIsCorrectAnswer(typed: string, vocab: VocabData, direction: "TH_TO
   }
 }
 
+export interface SessionRecordedAnswer {
+  vocabId: string;
+  word: string;
+  meaning: string;
+  userTypedInput: string;
+  correctAnswerText: string;
+  isCorrect: boolean;
+}
+
 interface HistorySessionItem {
   vocab: VocabData;
   mode: "GUEST" | "AUTHENTICATED";
@@ -269,6 +278,43 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
   // History Stack for Previous / Back navigation
   const [history, setHistory] = useState<HistorySessionItem[]>([]);
   const [historyIndex, setHistoryIndex] = useState<number>(-1);
+
+  // Practice Session Summary and DB Recording
+  const [recordedAnswers, setRecordedAnswers] = useState<SessionRecordedAnswer[]>([]);
+  const [sessionStartTime] = useState<number>(Date.now());
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [isSavingSummary, setIsSavingSummary] = useState(false);
+  const [savedSessionSummary, setSavedSessionSummary] = useState<any | null>(null);
+
+  const openAndSaveSummary = useCallback(async (answersToSave?: SessionRecordedAnswer[]) => {
+    const list = answersToSave || recordedAnswers;
+    if (list.length === 0) return;
+    setShowSummaryModal(true);
+    setIsSavingSummary(true);
+    try {
+      const durationSeconds = Math.round((Date.now() - sessionStartTime) / 1000);
+      const res = await fetch("/api/vocab/session-summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          collectionId: selectedCollectionId || null,
+          category: selectedCategory || "GENERAL",
+          durationSeconds,
+          answers: list,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.status === "success") {
+          setSavedSessionSummary(data.sessionSummary);
+        }
+      }
+    } catch (err) {
+      console.error("Error saving practice session summary:", err);
+    } finally {
+      setIsSavingSummary(false);
+    }
+  }, [recordedAnswers, selectedCollectionId, selectedCategory, sessionStartTime]);
 
   useEffect(() => {
     const checkDevice = () => {
@@ -420,6 +466,18 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
 
   const handleNext = useCallback(() => {
     syncCurrentToHistory();
+    if (vocab && !recordedAnswers.some((a) => a.vocabId === vocab.id)) {
+      const skipRecord: SessionRecordedAnswer = {
+        vocabId: vocab.id,
+        word: vocab.word,
+        meaning: vocab.meaning,
+        userTypedInput: "- กดข้ามคำ -",
+        correctAnswerText: `${vocab.word} = ${vocab.meaning}`,
+        isCorrect: false,
+      };
+      setRecordedAnswers((prev) => [...prev, skipRecord]);
+    }
+
     if (historyIndex < history.length - 1) {
       const nextIdx = historyIndex + 1;
       const nextItem = history[nextIdx];
@@ -437,7 +495,7 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
       }
     }
     fetchNextVocab();
-  }, [historyIndex, history, syncCurrentToHistory, fetchNextVocab]);
+  }, [historyIndex, history, syncCurrentToHistory, fetchNextVocab, vocab, recordedAnswers]);
 
   const handleSrsReview = async (rating: "again" | "hard" | "good" | "easy") => {
     if (!vocab) return;
@@ -536,22 +594,56 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
     }
 
     let newStatus: "IDLE" | "CORRECT" | "WRONG" = "IDLE";
+    let isCorrect = false;
     if (textToCheck.length > 0 && vocab) {
       if (checkIsCorrectAnswer(textToCheck, vocab, practiceDirection)) {
         newStatus = "CORRECT";
+        isCorrect = true;
         recordGuestWordCompletion(vocab.id, vocab.collectionId, vocab.category);
         if (mode === "GUEST") setGuestCompletedCount((prev) => prev + 1);
       } else {
         newStatus = "WRONG";
+        isCorrect = false;
       }
     } else if (isDrawingDevice && hasUserDrawn) {
       newStatus = "WRONG";
+      isCorrect = false;
     } else {
       newStatus = "IDLE";
     }
     setAnswerStatus(newStatus);
     setShowAnswer(true);
     syncCurrentToHistory({ showAnswer: true, answerStatus: newStatus, typedInput: textToCheck });
+
+    if (vocab && (newStatus === "CORRECT" || newStatus === "WRONG")) {
+      const answerRecord: SessionRecordedAnswer = {
+        vocabId: vocab.id,
+        word: vocab.word,
+        meaning: vocab.meaning,
+        userTypedInput: textToCheck || (isDrawingDevice && hasUserDrawn ? "(วาดจากลายมือแต่ไม่ถูกต้อง)" : "(กดดูเฉลย)"),
+        correctAnswerText: `${vocab.word} = ${vocab.meaning}`,
+        isCorrect,
+      };
+
+      setRecordedAnswers((prev) => {
+        if (prev.some((a) => a.vocabId === vocab.id)) return prev;
+        const nextAnswers = [...prev, answerRecord];
+
+        // "ถ้ากดดูเฉลยแล้วผิดถือว่าเสียคำนั้นไปเลย และไปคำต่อไป" -> 2.5s timer so they can see the correct answer briefly before auto-advancing
+        setTimeout(() => {
+          if (
+            nextAnswers.length >= 15 ||
+            (vocab.meta?.progress?.totalWords && nextAnswers.length >= vocab.meta.progress.totalWords)
+          ) {
+            openAndSaveSummary(nextAnswers);
+          } else {
+            handleNext();
+          }
+        }, isCorrect ? 1500 : 2500);
+
+        return nextAnswers;
+      });
+    }
   };
 
   // Calculate Progress Stats
@@ -673,23 +765,37 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                 })()}
               </div>
 
-              {/* Word Progress Bar (% & Counter) */}
-              <div className="w-full sm:w-80 flex flex-col gap-1.5">
-                <div className="flex items-center justify-between text-xs font-extrabold text-slate-700">
-                  <span>
-                    🎯 คำที่ {currentWordNumber} / {totalWords}{" "}
-                    <span className="text-slate-400 font-normal text-[11px]">
-                      (เหลือ {Math.max(0, totalWords - currentWordNumber)} คำ)
+              {/* Word Progress Bar (% & Counter) and Summary Button */}
+              <div className="w-full sm:w-auto flex items-center gap-3">
+                <div className="w-full sm:w-64 flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between text-xs font-extrabold text-slate-700">
+                    <span>
+                      🎯 คำที่ {currentWordNumber} / {totalWords}{" "}
+                      <span className="text-slate-400 font-normal text-[11px]">
+                        (เหลือ {Math.max(0, totalWords - currentWordNumber)} คำ)
+                      </span>
                     </span>
-                  </span>
-                  <span className="text-indigo-600 font-mono font-black">{percent}%</span>
+                    <span className="text-indigo-600 font-mono font-black">{percent}%</span>
+                  </div>
+                  <div className="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden p-0.5 shadow-inner">
+                    <div
+                      className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-500 rounded-full transition-all duration-500 ease-out"
+                      style={{ width: `${percent}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden p-0.5 shadow-inner">
-                  <div
-                    className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-500 rounded-full transition-all duration-500 ease-out"
-                    style={{ width: `${percent}%` }}
-                  />
-                </div>
+
+                {recordedAnswers.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => openAndSaveSummary()}
+                    className="pointer-events-auto px-3.5 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-black text-xs rounded-xl shadow-md flex items-center gap-1.5 shrink-0 transition-all cursor-pointer animate-pulse"
+                    title="สรุปผลและเก็บข้อมูลลง Database"
+                  >
+                    <span>🏆</span>
+                    <span>สรุปผล ({recordedAnswers.length} คำ)</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -972,6 +1078,31 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                           if (mode === "GUEST") setGuestCompletedCount((prev) => prev + 1);
                           setShowAnswer(true);
                           syncCurrentToHistory({ typedInput: val, answerStatus: "CORRECT", showAnswer: true });
+
+                          const answerRecord: SessionRecordedAnswer = {
+                            vocabId: vocab.id,
+                            word: vocab.word,
+                            meaning: vocab.meaning,
+                            userTypedInput: val,
+                            correctAnswerText: `${vocab.word} = ${vocab.meaning}`,
+                            isCorrect: true,
+                          };
+
+                          setRecordedAnswers((prev) => {
+                            if (prev.some((a) => a.vocabId === vocab.id)) return prev;
+                            const nextAnswers = [...prev, answerRecord];
+                            setTimeout(() => {
+                              if (
+                                nextAnswers.length >= 15 ||
+                                (vocab.meta?.progress?.totalWords && nextAnswers.length >= vocab.meta.progress.totalWords)
+                              ) {
+                                openAndSaveSummary(nextAnswers);
+                              } else {
+                                handleNext();
+                              }
+                            }, 1500);
+                            return nextAnswers;
+                          });
                         } else {
                           syncCurrentToHistory({ typedInput: val });
                         }
@@ -1162,6 +1293,147 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
           )}
         </>
       ) : null}
+
+      {/* =========================================================================
+          PRACTICE SESSION SUMMARY MODAL ("และสรุปตอนหลังเก็บลง db ว่าถูกผิดกี่คำเขียนว่าอะไร ถูกต้องเขียนอย่างไร")
+          ========================================================================= */}
+      {showSummaryModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-fadeIn">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200/80 max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-scaleUp">
+            {/* Modal Header */}
+            <div className="p-6 sm:p-8 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 text-white flex items-center justify-between shrink-0">
+              <div>
+                <span className="text-xs font-bold uppercase tracking-widest bg-white/20 px-3 py-1 rounded-full">
+                  🎯 สรุปผลการฝึกซ้อมรอบนี้
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-black mt-2">ผลลัพธ์และบันทึกข้อมูล</h2>
+                <p className="text-indigo-100 text-xs sm:text-sm font-medium mt-1">
+                  ระบบได้ทำการสรุปคำศัพท์ที่คุณฝึกซ้อมและเก็บสถิติบังคับลงฐานข้อมูล (DB) เรียบร้อยแล้ว
+                </p>
+              </div>
+              <div className="text-right shrink-0 hidden sm:block">
+                <span className="text-4xl">🏆</span>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 sm:p-8 overflow-y-auto flex-1 flex flex-col gap-6">
+              {/* Saving status indicator */}
+              {isSavingSummary ? (
+                <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-2xl flex items-center gap-3 text-indigo-900 font-bold text-sm">
+                  <div className="w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin shrink-0" />
+                  <span>⏳ กำลังบันทึกสรุปผลและคำตอบแต่ละข้อลง Database (table: practice_sessions & practice_answers)...</span>
+                </div>
+              ) : savedSessionSummary ? (
+                <div className="p-4 bg-emerald-50 border border-emerald-300 rounded-2xl flex items-center gap-3 text-emerald-900 font-bold text-sm shadow-xs">
+                  <span className="text-xl">✅</span>
+                  <div>
+                    <span>บันทึกผลลง Database เรียบร้อยแล้ว (Session ID: <code className="bg-emerald-100 px-1.5 py-0.5 rounded text-xs font-mono">{savedSessionSummary.id}</code>)</span>
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Summary Stats Cards */}
+              {(() => {
+                const total = recordedAnswers.length;
+                const correct = recordedAnswers.filter((a) => a.isCorrect).length;
+                const wrong = total - correct;
+                const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
+                return (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-center">
+                      <span className="text-xs font-bold text-slate-500 uppercase">📚 คำศัพท์ทั้งหมด</span>
+                      <p className="text-3xl font-black text-slate-800 mt-1">{total} <span className="text-sm font-bold">คำ</span></p>
+                    </div>
+                    <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-center">
+                      <span className="text-xs font-bold text-emerald-700 uppercase">✅ ตอบถูกต้อง</span>
+                      <p className="text-3xl font-black text-emerald-600 mt-1">{correct} <span className="text-sm font-bold">คำ</span></p>
+                    </div>
+                    <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-center">
+                      <span className="text-xs font-bold text-rose-700 uppercase">❌ เสียไป/ผิดพลาด</span>
+                      <p className="text-3xl font-black text-rose-600 mt-1">{wrong} <span className="text-sm font-bold">คำ</span></p>
+                    </div>
+                    <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-2xl text-center">
+                      <span className="text-xs font-bold text-indigo-700 uppercase">🎯 ความแม่นยำ</span>
+                      <p className="text-3xl font-black text-indigo-600 mt-1">{pct}%</p>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Detailed Words Table ("ถูกผิดกี่คำเขียนว่าอะไร ถูกต้องเขียนอย่างไร") */}
+              <div>
+                <h3 className="text-base font-black text-slate-800 mb-3 flex items-center gap-2">
+                  <span>📋</span>
+                  <span>รายละเอียดคำศัพท์แต่ละข้อ (เขียนว่าอะไร • ถูกต้องเขียนอย่างไร)</span>
+                </h3>
+                <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs sm:text-sm">
+                      <thead>
+                        <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-600 font-extrabold">
+                          <th className="p-3.5 w-14 text-center">ลำดับ</th>
+                          <th className="p-3.5">คำศัพท์</th>
+                          <th className="p-3.5 w-24 text-center">ผลลัพธ์</th>
+                          <th className="p-3.5">สิ่งที่คุณเขียน / ตอบ (`userTypedInput`)</th>
+                          <th className="p-3.5">เฉลยถูกต้องเขียนอย่างไร (`correctAnswerText`)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {recordedAnswers.map((item, idx) => (
+                          <tr key={idx} className={item.isCorrect ? "bg-emerald-50/30 hover:bg-emerald-50/60" : "bg-rose-50/30 hover:bg-rose-50/60"}>
+                            <td className="p-3.5 text-center font-bold text-slate-400">{idx + 1}</td>
+                            <td className="p-3.5 font-black text-slate-900">{item.word}</td>
+                            <td className="p-3.5 text-center">
+                              {item.isCorrect ? (
+                                <span className="px-2 py-1 bg-emerald-100 text-emerald-800 font-black rounded-lg border border-emerald-300 text-xs">
+                                  ✅ ถูกต้อง
+                                </span>
+                              ) : (
+                                <span className="px-2 py-1 bg-rose-100 text-rose-800 font-black rounded-lg border border-rose-300 text-xs">
+                                  ❌ เสียไป
+                                </span>
+                              )}
+                            </td>
+                            <td className="p-3.5 font-extrabold text-slate-800">
+                              {item.userTypedInput || (item.isCorrect ? item.word : "- ไม่ได้ระบุ -")}
+                            </td>
+                            <td className="p-3.5 font-bold text-indigo-700">
+                              {item.correctAnswerText}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-5 sm:p-6 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+              <Link
+                href="/"
+                className="w-full sm:w-auto px-5 py-3.5 rounded-2xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-sm text-center transition-all"
+              >
+                ⬅️ กลับไปเลือกหมวดคำศัพท์ใหม่
+              </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  setRecordedAnswers([]);
+                  setShowSummaryModal(false);
+                  setSavedSessionSummary(null);
+                  fetchNextVocab();
+                }}
+                className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-black text-sm sm:text-base shadow-lg shadow-indigo-600/25 transition-all cursor-pointer text-center"
+              >
+                🟢 ฝึกซ้อมรอบใหม่ (Start Fresh) ➡️
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
