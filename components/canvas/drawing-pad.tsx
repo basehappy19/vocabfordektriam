@@ -7,6 +7,8 @@ interface DrawingPadProps {
   showGuidelineWord?: boolean;
   className?: string;
   onDrawStateChange?: (hasDrawn: boolean) => void;
+  initialDataUrl?: string | null;
+  onCanvasChange?: (dataUrl: string | null) => void;
 }
 
 interface Stroke {
@@ -20,12 +22,22 @@ export default function DrawingPad({
   showGuidelineWord = false,
   className = "",
   onDrawStateChange,
+  initialDataUrl = null,
+  onCanvasChange,
 }: DrawingPadProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [strokeColor, setStrokeColor] = useState("#4f46e5"); // Indigo default
   const [strokeWidth, setStrokeWidth] = useState(4); // Clean smooth stroke
   const [hasDrawn, setHasDrawn] = useState(false);
+
+  const notifyCanvasChange = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !onCanvasChange) return;
+    try {
+      onCanvasChange(canvas.toDataURL("image/png"));
+    } catch (e) {}
+  }, [onCanvasChange]);
 
   const updateHasDrawn = useCallback((val: boolean) => {
     setHasDrawn(val);
@@ -76,6 +88,27 @@ export default function DrawingPad({
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, [initCanvas]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const dpr = window.devicePixelRatio || 1;
+
+    if (initialDataUrl) {
+      const img = new Image();
+      img.onload = () => {
+        ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+        ctx.drawImage(img, 0, 0, canvas.width / dpr, canvas.height / dpr);
+        updateHasDrawn(true);
+      };
+      img.src = initialDataUrl;
+    } else {
+      ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+      updateHasDrawn(false);
+    }
+  }, [wordToPractice, initialDataUrl, updateHasDrawn]);
 
   // Update stroke style when color/width change
   useEffect(() => {
@@ -158,6 +191,7 @@ export default function DrawingPad({
     if (canvas) {
       canvas.releasePointerCapture(e.pointerId);
     }
+    notifyCanvasChange();
   };
 
   const handleClear = () => {
@@ -170,6 +204,7 @@ export default function DrawingPad({
     const dpr = window.devicePixelRatio || 1;
     ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
     updateHasDrawn(false);
+    notifyCanvasChange();
   };
 
   const handleUndo = () => {
@@ -185,6 +220,7 @@ export default function DrawingPad({
     if (history.length <= 1) {
       updateHasDrawn(false);
     }
+    notifyCanvasChange();
   };
 
   return (

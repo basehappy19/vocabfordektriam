@@ -53,6 +53,8 @@ interface CanvasLoaderProps {
   onClear?: () => void;
   className?: string;
   onDrawStateChange?: (hasDrawn: boolean) => void;
+  initialDataUrl?: string | null;
+  onCanvasChange?: (dataUrl: string | null) => void;
 }
 
 export default function CanvasLoader(props: CanvasLoaderProps) {

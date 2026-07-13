@@ -89,6 +89,17 @@ function checkIsCorrectAnswer(typed: string, vocab: VocabData, direction: "TH_TO
   }
 }
 
+interface HistorySessionItem {
+  vocab: VocabData;
+  mode: "GUEST" | "AUTHENTICATED";
+  showAnswer: boolean;
+  answerStatus: "IDLE" | "CORRECT" | "WRONG";
+  typedInput: string;
+  hasUserDrawn: boolean;
+  drawingDataUrl: string | null;
+  practiceDirection: "TH_TO_EN" | "EN_TO_TH";
+}
+
 export default function PracticeSession({ initialCategory = "" }: PracticeSessionProps) {
   const [vocab, setVocab] = useState<VocabData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -113,6 +124,11 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
   // iPad / Drawing Device Detection vs PC/Mobile Typing Detection
   const [isDrawingDevice, setIsDrawingDevice] = useState(false);
   const [hasUserDrawn, setHasUserDrawn] = useState(false);
+  const [drawingDataUrl, setDrawingDataUrl] = useState<string | null>(null);
+
+  // History Stack for Previous / Back navigation
+  const [history, setHistory] = useState<HistorySessionItem[]>([]);
+  const [historyIndex, setHistoryIndex] = useState<number>(-1);
 
   useEffect(() => {
     const checkDevice = () => {
@@ -133,6 +149,7 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
     setAnswerStatus("IDLE");
     setTypedInput("");
     setHasUserDrawn(false);
+    setDrawingDataUrl(null);
 
     const fallbackTimer = setTimeout(() => {
       setLoading(false);
@@ -168,8 +185,27 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
       }
 
       const json = await res.json();
+      const newDirection: "TH_TO_EN" | "EN_TO_TH" = Math.random() > 0.3 ? "TH_TO_EN" : "EN_TO_TH";
       setVocab(json.data);
       setMode(json.mode);
+      setPracticeDirection(newDirection);
+
+      const newItem: HistorySessionItem = {
+        vocab: json.data,
+        mode: json.mode,
+        showAnswer: false,
+        answerStatus: "IDLE",
+        typedInput: "",
+        hasUserDrawn: false,
+        drawingDataUrl: null,
+        practiceDirection: newDirection,
+      };
+
+      setHistory((prev) => {
+        const nextList = [...prev, newItem];
+        setHistoryIndex(nextList.length - 1);
+        return nextList;
+      });
     } catch (err: any) {
       clearTimeout(fallbackTimer);
       if (err.name === "AbortError" || err.message?.includes("abort")) {
@@ -187,13 +223,85 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
     fetchNextVocab();
   }, [fetchNextVocab]);
 
+  const syncCurrentToHistory = useCallback(
+    (overrides: Partial<HistorySessionItem> = {}) => {
+      if (historyIndex < 0 || !vocab) return;
+      setHistory((prev) => {
+        const updated = [...prev];
+        if (updated[historyIndex]) {
+          updated[historyIndex] = {
+            ...updated[historyIndex],
+            vocab,
+            mode,
+            showAnswer,
+            answerStatus,
+            typedInput,
+            hasUserDrawn,
+            drawingDataUrl,
+            practiceDirection,
+            ...overrides,
+          };
+        }
+        return updated;
+      });
+    },
+    [historyIndex, vocab, mode, showAnswer, answerStatus, typedInput, hasUserDrawn, drawingDataUrl, practiceDirection]
+  );
+
+  const handleCanvasChange = useCallback(
+    (dataUrl: string | null) => {
+      setDrawingDataUrl(dataUrl);
+      syncCurrentToHistory({ drawingDataUrl: dataUrl });
+    },
+    [syncCurrentToHistory]
+  );
+
+  const handlePrev = useCallback(() => {
+    if (historyIndex <= 0) return;
+    syncCurrentToHistory();
+    const prevIdx = historyIndex - 1;
+    const prevItem = history[prevIdx];
+    if (prevItem) {
+      setVocab(prevItem.vocab);
+      setMode(prevItem.mode);
+      setShowAnswer(prevItem.showAnswer);
+      setAnswerStatus(prevItem.answerStatus);
+      setTypedInput(prevItem.typedInput);
+      setHasUserDrawn(prevItem.hasUserDrawn);
+      setDrawingDataUrl(prevItem.drawingDataUrl);
+      setPracticeDirection(prevItem.practiceDirection);
+      setHistoryIndex(prevIdx);
+    }
+  }, [historyIndex, history, syncCurrentToHistory]);
+
+  const handleNext = useCallback(() => {
+    syncCurrentToHistory();
+    if (historyIndex < history.length - 1) {
+      const nextIdx = historyIndex + 1;
+      const nextItem = history[nextIdx];
+      if (nextItem) {
+        setVocab(nextItem.vocab);
+        setMode(nextItem.mode);
+        setShowAnswer(nextItem.showAnswer);
+        setAnswerStatus(nextItem.answerStatus);
+        setTypedInput(nextItem.typedInput);
+        setHasUserDrawn(nextItem.hasUserDrawn);
+        setDrawingDataUrl(nextItem.drawingDataUrl);
+        setPracticeDirection(nextItem.practiceDirection);
+        setHistoryIndex(nextIdx);
+        return;
+      }
+    }
+    fetchNextVocab();
+  }, [historyIndex, history, syncCurrentToHistory, fetchNextVocab]);
+
   const handleSrsReview = async (rating: "again" | "hard" | "good" | "easy") => {
     if (!vocab) return;
     recordGuestWordCompletion(vocab.id, vocab.collectionId, vocab.category);
 
     if (mode === "GUEST") {
       setGuestCompletedCount((prev) => prev + 1);
-      fetchNextVocab();
+      handleNext();
       return;
     }
 
@@ -216,23 +324,29 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
       console.error(err);
     } finally {
       setIsReviewing(false);
-      fetchNextVocab();
+      handleNext();
     }
   };
 
   const handleRevealClick = () => {
+    if (isDrawingDevice && !hasUserDrawn) return;
+    if (!isDrawingDevice && !typedInput.trim()) return;
+
+    let newStatus: "IDLE" | "CORRECT" | "WRONG" = "IDLE";
     if (typedInput.trim().length > 0 && vocab) {
       if (checkIsCorrectAnswer(typedInput, vocab, practiceDirection)) {
-        setAnswerStatus("CORRECT");
+        newStatus = "CORRECT";
         recordGuestWordCompletion(vocab.id, vocab.collectionId, vocab.category);
         if (mode === "GUEST") setGuestCompletedCount((prev) => prev + 1);
       } else {
-        setAnswerStatus("WRONG");
+        newStatus = "WRONG";
       }
     } else {
-      setAnswerStatus("IDLE");
+      newStatus = "IDLE";
     }
+    setAnswerStatus(newStatus);
     setShowAnswer(true);
+    syncCurrentToHistory({ showAnswer: true, answerStatus: newStatus });
   };
 
   // Calculate Progress Stats
@@ -385,6 +499,8 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                   wordToPractice={vocab.word}
                   showGuidelineWord={practiceDirection === "EN_TO_TH" || showAnswer}
                   onDrawStateChange={(drawn) => setHasUserDrawn(drawn)}
+                  initialDataUrl={drawingDataUrl}
+                  onCanvasChange={handleCanvasChange}
                 />
               </div>
 
@@ -405,22 +521,37 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
 
               <div className="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-20 pointer-events-none w-full max-w-xl px-4 flex flex-col items-center justify-center">
                 {!showAnswer ? (
-                  <button
-                    type="button"
-                    disabled={!hasUserDrawn && practiceDirection === "TH_TO_EN"}
-                    onClick={handleRevealClick}
-                    className={`pointer-events-auto w-full sm:w-auto px-7 py-4 rounded-2xl shadow-xl backdrop-blur-md transition-all text-base flex items-center justify-center gap-2 border font-extrabold ${
-                      hasUserDrawn || practiceDirection === "EN_TO_TH"
-                        ? "bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white border-indigo-400/30 animate-pulse cursor-pointer shadow-indigo-600/30"
-                        : "bg-slate-700/85 text-slate-300 border-slate-600/50 cursor-not-allowed opacity-80"
-                    }`}
-                  >
-                    <span>
-                      {hasUserDrawn || practiceDirection === "EN_TO_TH"
-                        ? "💡 ตรวจคำตอบ & ดูเฉลยทันที"
-                        : "✍️ กรุณาเขียนคำศัพท์ด้วย Apple Pencil ก่อนกดดูเฉลย"}
-                    </span>
-                  </button>
+                  <div className="pointer-events-auto flex items-center justify-center gap-2 sm:gap-3 w-full sm:w-auto bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-2.5 rounded-3xl border border-slate-200/80 shadow-2xl">
+                    <button
+                      type="button"
+                      onClick={handlePrev}
+                      disabled={historyIndex <= 0}
+                      className="px-4 sm:px-5 py-3.5 rounded-2xl font-bold text-xs sm:text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all border border-slate-200 flex items-center gap-1.5"
+                    >
+                      ⬅️ ย้อนกลับ
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={!hasUserDrawn}
+                      onClick={handleRevealClick}
+                      className={`px-7 sm:px-10 py-3.5 rounded-2xl font-black text-base sm:text-lg transition-all flex items-center justify-center border shadow-md ${
+                        hasUserDrawn
+                          ? "bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white border-indigo-500 shadow-indigo-600/30 cursor-pointer animate-pulse"
+                          : "bg-slate-200 text-slate-400 border-slate-300 cursor-not-allowed opacity-75 shadow-none"
+                      }`}
+                    >
+                      ดูเฉลย
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleNext}
+                      className="px-4 sm:px-5 py-3.5 rounded-2xl font-bold text-xs sm:text-sm bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      ข้ามคำ ⏩
+                    </button>
+                  </div>
                 ) : (
                   <div
                     className={`pointer-events-auto w-full p-6 rounded-3xl border shadow-2xl flex flex-col gap-4 max-h-[75vh] overflow-y-auto transition-all duration-300 ${
@@ -524,15 +655,37 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                           </button>
                         </div>
                       ) : (
-                        <button
-                          onClick={() => {
-                            setGuestCompletedCount((prev) => prev + 1);
-                            fetchNextVocab();
-                          }}
-                          className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl shadow-md text-center text-base"
-                        >
-                          คำศัพท์ถัดไป ➡️
-                        </button>
+                        <div className="flex items-center gap-2.5 w-full">
+                          <button
+                            type="button"
+                            onClick={handlePrev}
+                            disabled={historyIndex <= 0}
+                            className="px-4 py-3.5 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold rounded-xl text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                          >
+                            ⬅️ ย้อนกลับ
+                          </button>
+                          <button
+                            onClick={() => {
+                              setGuestCompletedCount((prev) => prev + 1);
+                              handleNext();
+                            }}
+                            className="flex-1 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl shadow-md text-center text-base cursor-pointer"
+                          >
+                            คำศัพท์ถัดไป ➡️
+                          </button>
+                        </div>
+                      )}
+                      {mode === "AUTHENTICATED" && (
+                        <div className="flex justify-start pt-1">
+                          <button
+                            type="button"
+                            onClick={handlePrev}
+                            disabled={historyIndex <= 0}
+                            className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl text-xs disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                          >
+                            ⬅️ ย้อนกลับไปคำก่อนหน้า
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -566,7 +719,7 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                 </div>
 
                 {!showAnswer ? (
-                  <div className="w-full flex flex-col items-center gap-4">
+                  <div className="w-full flex flex-col items-center gap-5">
                     <input
                       type="text"
                       autoFocus
@@ -584,18 +737,43 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                           recordGuestWordCompletion(vocab.id, vocab.collectionId, vocab.category);
                           if (mode === "GUEST") setGuestCompletedCount((prev) => prev + 1);
                           setShowAnswer(true);
+                          syncCurrentToHistory({ typedInput: val, answerStatus: "CORRECT", showAnswer: true });
+                        } else {
+                          syncCurrentToHistory({ typedInput: val });
                         }
                       }}
                       className="w-full text-2xl sm:text-4xl font-extrabold text-center py-6 px-8 bg-white border-2 border-slate-300 focus:border-indigo-600 rounded-3xl shadow-lg focus:outline-none focus:ring-4 focus:ring-indigo-100 transition-all text-slate-900 placeholder:text-slate-300 placeholder:font-normal placeholder:text-xl sm:placeholder:text-2xl"
                     />
 
-                    <div className="flex items-center justify-center mt-2">
+                    <div className="flex items-center justify-center gap-3 mt-1 flex-wrap w-full sm:w-auto">
                       <button
                         type="button"
-                        onClick={handleRevealClick}
-                        className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-sm sm:text-base font-black transition-all shadow-md shadow-indigo-600/25 active:scale-98 cursor-pointer"
+                        onClick={handlePrev}
+                        disabled={historyIndex <= 0}
+                        className="px-5 py-3.5 rounded-2xl font-bold text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all border border-slate-200 shadow-xs flex items-center gap-1.5"
                       >
-                        💡 ดูเฉลยทันที (Reveal Answer)
+                        ⬅️ ย้อนกลับ
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={!typedInput.trim()}
+                        onClick={handleRevealClick}
+                        className={`px-8 py-3.5 rounded-2xl text-base font-black transition-all border shadow-md flex items-center justify-center ${
+                          typedInput.trim().length > 0
+                            ? "bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white border-indigo-500 shadow-indigo-600/25 cursor-pointer animate-pulse"
+                            : "bg-slate-200 text-slate-400 border-slate-300 cursor-not-allowed opacity-70 shadow-none"
+                        }`}
+                      >
+                        ดูเฉลย
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleNext}
+                        className="px-5 py-3.5 rounded-2xl font-bold text-sm bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 transition-all cursor-pointer shadow-xs flex items-center gap-1"
+                      >
+                        ข้ามคำ ⏩
                       </button>
                     </div>
                   </div>
@@ -713,15 +891,37 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                           </div>
                         </>
                       ) : (
-                        <button
-                          onClick={() => {
-                            setGuestCompletedCount((prev) => prev + 1);
-                            fetchNextVocab();
-                          }}
-                          className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl shadow-lg shadow-indigo-600/25 transition-all text-center text-base cursor-pointer"
-                        >
-                          คำศัพท์ถัดไป ➡️
-                        </button>
+                        <div className="flex items-center gap-3 w-full">
+                          <button
+                            type="button"
+                            onClick={handlePrev}
+                            disabled={historyIndex <= 0}
+                            className="px-5 py-4 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-2xl text-base disabled:opacity-40 disabled:cursor-not-allowed transition-all border border-slate-200 shadow-xs"
+                          >
+                            ⬅️ ย้อนกลับ
+                          </button>
+                          <button
+                            onClick={() => {
+                              setGuestCompletedCount((prev) => prev + 1);
+                              handleNext();
+                            }}
+                            className="flex-1 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl shadow-lg shadow-indigo-600/25 transition-all text-center text-base cursor-pointer"
+                          >
+                            คำศัพท์ถัดไป ➡️
+                          </button>
+                        </div>
+                      )}
+                      {mode === "AUTHENTICATED" && (
+                        <div className="flex justify-start pt-1">
+                          <button
+                            type="button"
+                            onClick={handlePrev}
+                            disabled={historyIndex <= 0}
+                            className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all border border-slate-200 shadow-xs"
+                          >
+                            ⬅️ ย้อนกลับไปคำก่อนหน้า
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
