@@ -31,18 +31,31 @@ export default function DrawingPad({
   const [strokeWidth, setStrokeWidth] = useState(4); // Clean smooth stroke
   const [hasDrawn, setHasDrawn] = useState(false);
 
+  const onDrawStateChangeRef = useRef(onDrawStateChange);
+  const onCanvasChangeRef = useRef(onCanvasChange);
+
+  useEffect(() => {
+    onDrawStateChangeRef.current = onDrawStateChange;
+    onCanvasChangeRef.current = onCanvasChange;
+  }, [onDrawStateChange, onCanvasChange]);
+
   const notifyCanvasChange = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !onCanvasChange) return;
+    if (!canvas || !onCanvasChangeRef.current) return;
     try {
-      onCanvasChange(canvas.toDataURL("image/png"));
+      onCanvasChangeRef.current(canvas.toDataURL("image/png"));
     } catch (e) {}
-  }, [onCanvasChange]);
+  }, []);
 
   const updateHasDrawn = useCallback((val: boolean) => {
-    setHasDrawn(val);
-    onDrawStateChange?.(val);
-  }, [onDrawStateChange]);
+    setHasDrawn((prev) => {
+      if (prev !== val) {
+        onDrawStateChangeRef.current?.(val);
+        return val;
+      }
+      return prev;
+    });
+  }, []);
 
   // History stack for Undo capability
   const [history, setHistory] = useState<ImageData[]>([]);

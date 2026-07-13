@@ -154,7 +154,7 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
     const fallbackTimer = setTimeout(() => {
       setLoading(false);
       setError("การเชื่อมต่อใช้เวลานานเกินกำหนด กรุณากดปุ่มลองใหม่อีกครั้งเพื่อรีเฟรชข้อมูล");
-    }, 4500);
+    }, 20000);
 
     try {
       let url = `/api/vocab/next`;
@@ -165,7 +165,7 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
       }
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      const timeoutId = setTimeout(() => controller.abort(), 18000);
 
       const res = await fetch(url, {
         cache: "no-store",
@@ -247,6 +247,10 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
     },
     [historyIndex, vocab, mode, showAnswer, answerStatus, typedInput, hasUserDrawn, drawingDataUrl, practiceDirection]
   );
+
+  const handleDrawStateChange = useCallback((drawn: boolean) => {
+    setHasUserDrawn((prev) => (prev === drawn ? prev : drawn));
+  }, []);
 
   const handleCanvasChange = useCallback(
     (dataUrl: string | null) => {
@@ -498,26 +502,28 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                 <CanvasLoader
                   wordToPractice={vocab.word}
                   showGuidelineWord={practiceDirection === "EN_TO_TH" || showAnswer}
-                  onDrawStateChange={(drawn) => setHasUserDrawn(drawn)}
+                  onDrawStateChange={handleDrawStateChange}
                   initialDataUrl={drawingDataUrl}
                   onCanvasChange={handleCanvasChange}
                 />
               </div>
 
-              <div className="absolute top-20 left-4 z-10 pointer-events-none flex items-center gap-2.5">
-                <div className="pointer-events-auto flex items-center gap-2.5 bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl border border-slate-200/80 shadow-md">
-                  {practiceDirection === "TH_TO_EN" ? (
-                    <h2 className="text-xl sm:text-2xl font-black text-slate-900">{vocab.meaning}</h2>
-                  ) : (
-                    <div className="flex items-baseline gap-2">
-                      <h2 className="text-xl sm:text-2xl font-black text-slate-900">{vocab.word}</h2>
-                      {vocab.phonetic && (
-                        <span className="text-sm font-mono text-slate-500">/{vocab.phonetic}/</span>
-                      )}
-                    </div>
-                  )}
+              {!showAnswer && (
+                <div className="absolute top-20 left-4 z-10 pointer-events-none flex items-center gap-2.5">
+                  <div className="pointer-events-auto flex items-center gap-2.5 bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl border border-slate-200/80 shadow-md">
+                    {practiceDirection === "TH_TO_EN" ? (
+                      <h2 className="text-xl sm:text-2xl font-black text-slate-900">{vocab.meaning}</h2>
+                    ) : (
+                      <div className="flex items-baseline gap-2">
+                        <h2 className="text-xl sm:text-2xl font-black text-slate-900">{vocab.word}</h2>
+                        {vocab.phonetic && (
+                          <span className="text-sm font-mono text-slate-500">/{vocab.phonetic}/</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-20 pointer-events-none w-full max-w-xl px-4 flex flex-col items-center justify-center">
                 {!showAnswer ? (
@@ -565,10 +571,7 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                       <div className="w-full p-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-2xl shadow-md shadow-emerald-600/25 border border-emerald-300 flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <span className="text-3xl">🎉</span>
-                          <div>
-                            <h3 className="text-base sm:text-lg font-black">ถูกต้องเป๊ะ! (Correct)</h3>
-                            <p className="text-xs text-emerald-100 font-medium">คำคัดหรือคำตอบของคุณตรงกับคลังข้อสอบจริง</p>
-                          </div>
+                          <h3 className="text-base sm:text-lg font-black">ถูกต้อง</h3>
                         </div>
                         <span className="px-3 py-1 bg-white text-emerald-900 text-xs font-black rounded-full uppercase">+1 EXP ✅</span>
                       </div>
@@ -698,25 +701,27 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                ========================================================================= */
             <div className="absolute inset-0 w-full h-full flex flex-col justify-between p-6 sm:p-10 z-10 bg-[#f8fafc] overflow-y-auto pt-24 sm:pt-28">
               <div className="w-full max-w-3xl mx-auto my-auto flex flex-col items-center justify-center gap-8 py-4">
-                <div className="text-center flex flex-col gap-2">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                    {practiceDirection === "TH_TO_EN" ? "🇹🇭 คำแปลภาษาไทย (พิมพ์คำศัพท์อังกฤษ)" : "🇬🇧 คำศัพท์อังกฤษ (แปลความหมาย)"}
-                  </span>
-                  {practiceDirection === "TH_TO_EN" ? (
-                    <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-slate-900 tracking-tight leading-tight">
-                      {vocab.meaning}
-                    </h1>
-                  ) : (
-                    <div className="flex flex-col items-center gap-1">
-                      <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-slate-900 tracking-tight">
-                        {vocab.word}
+                {!showAnswer && (
+                  <div className="text-center flex flex-col gap-2">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                      {practiceDirection === "TH_TO_EN" ? "🇹🇭 คำแปลภาษาไทย (พิมพ์คำศัพท์อังกฤษ)" : "🇬🇧 คำศัพท์อังกฤษ (แปลความหมาย)"}
+                    </span>
+                    {practiceDirection === "TH_TO_EN" ? (
+                      <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-slate-900 tracking-tight leading-tight">
+                        {vocab.meaning}
                       </h1>
-                      {vocab.phonetic && (
-                        <span className="text-lg sm:text-xl font-mono text-slate-400">/{vocab.phonetic}/</span>
-                      )}
-                    </div>
-                  )}
-                </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-1">
+                        <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-slate-900 tracking-tight">
+                          {vocab.word}
+                        </h1>
+                        {vocab.phonetic && (
+                          <span className="text-lg sm:text-xl font-mono text-slate-400">/{vocab.phonetic}/</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {!showAnswer ? (
                   <div className="w-full flex flex-col items-center gap-5">
@@ -790,10 +795,7 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                       <div className="w-full p-4.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-2xl shadow-md shadow-emerald-600/25 border border-emerald-300 flex items-center justify-between transition-all duration-300">
                         <div className="flex items-center gap-3.5">
                           <span className="text-4xl">🎉</span>
-                          <div>
-                            <h3 className="text-lg sm:text-xl font-black">สุดยอดมาก! ตอบถูกต้องเป๊ะ (Correct!)</h3>
-                            <p className="text-xs sm:text-sm text-emerald-100 font-medium">คำตอบหรือคำพ้องความหมายของคุณตรงกับคลังข้อสอบจริง</p>
-                          </div>
+                          <h3 className="text-lg sm:text-xl font-black">ถูกต้อง</h3>
                         </div>
                         <span className="px-3 py-1 bg-white text-emerald-900 text-xs font-black rounded-full uppercase shadow-2xs">+1 EXP ✅</span>
                       </div>
