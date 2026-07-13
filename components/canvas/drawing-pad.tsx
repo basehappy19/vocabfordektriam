@@ -230,8 +230,15 @@ export default function DrawingPad({
         </div>
       </div>
 
-      {/* iPad Apple Pencil Large Clean Canvas Area */}
-      <div className="relative w-full h-[360px] sm:h-[440px] md:h-[500px] bg-white rounded-3xl border-2 border-slate-300 overflow-hidden shadow-inner">
+      {/* iPad Apple Pencil Large Clean Grid Canvas Area ("ทำให้โซนเขียนเต็มหน้าจอ" + "ลายตารางจาง ๆ") */}
+      <div
+        className="relative w-full min-h-[480px] sm:min-h-[580px] md:min-h-[660px] flex-1 rounded-3xl border-2 border-slate-300 overflow-hidden shadow-inner transition-all"
+        style={{
+          backgroundColor: "#ffffff",
+          backgroundImage: `linear-gradient(to right, #e2e8f0 1px, transparent 1px), linear-gradient(to bottom, #e2e8f0 1px, transparent 1px)`,
+          backgroundSize: "32px 32px",
+        }}
+      >
         {/* Subtle Watermark Guideline (Only when showGuidelineWord is true) */}
         {!hasDrawn && wordToPractice && showGuidelineWord && (
           <div

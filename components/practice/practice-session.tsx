@@ -33,8 +33,7 @@ export default function PracticeSession() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<"GUEST" | "AUTHENTICATED">("GUEST");
-  
-  // Primary practice mode requested by user: Thai meaning -> write English word ("ให้โหมดภาษาไทยให้เขียนอังฤษเป็นหลัก")
+
   const [practiceDirection, setPracticeDirection] = useState<"TH_TO_EN" | "EN_TO_TH">("TH_TO_EN");
   const [showAnswer, setShowAnswer] = useState(false);
   const [isReviewing, setIsReviewing] = useState(false);
@@ -102,82 +101,58 @@ export default function PracticeSession() {
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto flex flex-col gap-6 p-4 sm:p-6 text-slate-900 font-sans">
-      {/* Top Controls & Mode Switcher (Clean Light Theme) */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs">
-        {/* Guest vs Authenticated Status */}
-        <div className="flex items-center gap-2.5">
-          <span className="flex h-2.5 w-2.5 relative">
-            <span
-              className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                mode === "AUTHENTICATED" ? "bg-emerald-400" : "bg-amber-400"
-              }`}
-            />
-            <span
-              className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
-                mode === "AUTHENTICATED" ? "bg-emerald-500" : "bg-amber-500"
-              }`}
-            />
-          </span>
-          <div>
-            <span className="text-[11px] font-semibold text-slate-500 block">
-              สถานะ: {mode === "AUTHENTICATED" ? "บันทึกความคืบหน้า (Leitner SRS)" : "ผู้ใช้งานทั่วไป Guest (สุ่มศัพท์)"}
-            </span>
-          </div>
+    <div className="w-full flex flex-col flex-1 gap-4 text-slate-900 font-sans">
+      {/* Sleek Minimal Controls Strip ("ลด Text ให้ดู Modern") */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white/80 backdrop-blur-sm p-3 rounded-2xl border border-slate-200/80 shadow-2xs">
+        <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200/60">
+          <button
+            type="button"
+            onClick={() => {
+              setPracticeDirection("TH_TO_EN");
+              setShowAnswer(false);
+            }}
+            aria-pressed={practiceDirection === "TH_TO_EN"}
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+              practiceDirection === "TH_TO_EN"
+                ? "bg-white text-indigo-700 shadow-2xs border border-slate-200/60"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            🇹🇭 แปลไทย ➡️ เขียนอังกฤษ (หลัก)
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setPracticeDirection("EN_TO_TH");
+              setShowAnswer(false);
+            }}
+            aria-pressed={practiceDirection === "EN_TO_TH"}
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+              practiceDirection === "EN_TO_TH"
+                ? "bg-white text-indigo-700 shadow-2xs border border-slate-200/60"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            🇬🇧 ศัพท์อังกฤษ ➡️ แปลไทย
+          </button>
         </div>
 
-        {/* Practice Direction Mode Switcher & Category Filter */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200/80">
-            <button
-              type="button"
-              onClick={() => {
-                setPracticeDirection("TH_TO_EN");
-                setShowAnswer(false);
-              }}
-              aria-pressed={practiceDirection === "TH_TO_EN"}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                practiceDirection === "TH_TO_EN"
-                  ? "bg-white text-indigo-700 shadow-2xs border border-slate-200/60"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              🇹🇭 แปลไทย ➡️ เขียนอังกฤษ (หลัก)
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setPracticeDirection("EN_TO_TH");
-                setShowAnswer(false);
-              }}
-              aria-pressed={practiceDirection === "EN_TO_TH"}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                practiceDirection === "EN_TO_TH"
-                  ? "bg-white text-indigo-700 shadow-2xs border border-slate-200/60"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              🇬🇧 ศัพท์อังกฤษ ➡️ แปลไทย
-            </button>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            <label htmlFor="category-select" className="text-xs font-semibold text-slate-600">
-              หมวด:
-            </label>
-            <select
-              id="category-select"
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              aria-label="เลือกหมวดหมู่คำศัพท์เตรียมสอบ"
-              className="text-xs font-medium rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-            >
-              <option value="">ทั้งหมด (All TCAS/TGAT)</option>
-              <option value="TGAT-Eng">TGAT English Core</option>
-              <option value="A-Level">A-Level Vocabulary</option>
-              <option value="TCAS-Academic">TCAS Academic Idioms</option>
-            </select>
-          </div>
+        <div className="flex items-center gap-2">
+          <label htmlFor="category-select" className="text-xs font-semibold text-slate-500">
+            หมวด:
+          </label>
+          <select
+            id="category-select"
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            aria-label="เลือกหมวดหมู่คำศัพท์เตรียมสอบ"
+            className="text-xs font-semibold rounded-xl border border-slate-200 bg-white px-3 py-1.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-2xs"
+          >
+            <option value="">ทั้งหมด (All TCAS/TGAT)</option>
+            <option value="TGAT-Eng">TGAT English Core</option>
+            <option value="A-Level">A-Level Vocabulary</option>
+            <option value="TCAS-Academic">TCAS Academic Idioms</option>
+          </select>
         </div>
       </div>
 
@@ -186,16 +161,16 @@ export default function PracticeSession() {
         <div
           role="status"
           aria-label="กำลังโหลดคำศัพท์ถัดไป (Loading next vocabulary item)"
-          className="w-full flex flex-col items-center justify-center p-16 bg-white rounded-3xl border border-slate-200 shadow-md gap-4 animate-pulse"
+          className="w-full flex-1 flex flex-col items-center justify-center p-12 bg-white rounded-3xl border border-slate-200 shadow-xs gap-4 animate-pulse"
         >
-          <div className="h-10 w-64 bg-slate-200 rounded-xl" />
-          <div className="h-6 w-40 bg-slate-100 rounded-lg" />
-          <div className="h-80 w-full bg-slate-100 rounded-2xl mt-4" />
+          <div className="h-8 w-64 bg-slate-200 rounded-xl" />
+          <div className="h-5 w-40 bg-slate-100 rounded-lg" />
+          <div className="min-h-[480px] sm:min-h-[580px] md:min-h-[660px] w-full bg-slate-100 rounded-3xl mt-4" />
         </div>
       ) : error ? (
         <div
           role="alert"
-          className="p-8 bg-rose-50 border border-rose-200 rounded-3xl text-rose-800 text-center flex flex-col items-center gap-4"
+          className="p-8 bg-rose-50 border border-rose-200 rounded-3xl text-rose-800 text-center flex flex-col items-center gap-4 shadow-xs"
         >
           <span className="text-3xl">⚠️</span>
           <p className="font-bold text-lg">{error}</p>
@@ -209,9 +184,9 @@ export default function PracticeSession() {
           </button>
         </div>
       ) : vocab ? (
-        <div className="flex flex-col gap-6 bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-md">
-          {/* Top Badges */}
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-4">
+        <div className="w-full flex-1 flex flex-col gap-4 bg-white rounded-3xl border border-slate-200 p-5 sm:p-6 shadow-sm">
+          {/* Top Badges & Word Info */}
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2">
               <span className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-xs font-bold uppercase tracking-wider border border-indigo-200/80">
                 {vocab.category}
@@ -237,34 +212,34 @@ export default function PracticeSession() {
           {/* Primary Prompt Display Card based on Direction */}
           {practiceDirection === "TH_TO_EN" ? (
             /* TH_TO_EN Mode: Show Thai Meaning Prominently at top -> write English */
-            <div className="flex flex-col gap-3 py-2">
-              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-indigo-600">
-                <span>📌 โจทย์ความหมายภาษาไทย (เขียนคำศัพท์อังกฤษด้านล่าง)</span>
-              </div>
-              <div className="p-6 bg-slate-50 border border-slate-200/80 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-slate-50 border border-slate-200/80 p-5 rounded-2xl">
+              <div className="flex flex-col gap-1">
+                <span className="text-xs font-bold uppercase tracking-wider text-indigo-600">
+                  📌 โจทย์ความหมายภาษาไทย (เขียนศัพท์อังกฤษลงในตารางด้านล่าง)
+                </span>
                 <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-900 leading-snug">
                   {vocab.meaning}
                 </h2>
-                {!showAnswer ? (
-                  <span className="text-xs font-semibold text-slate-500 bg-white px-3 py-1.5 rounded-xl border border-slate-200 whitespace-nowrap">
-                    ✍️ เขียนคำอังกฤษด้วย Apple Pencil
-                  </span>
-                ) : (
-                  <div className="flex items-center gap-2 bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded-xl">
-                    <span className="text-xs font-bold text-indigo-700">เฉลยเปิดแล้ว</span>
-                  </div>
-                )}
               </div>
+              {!showAnswer ? (
+                <span className="text-xs font-semibold text-slate-500 bg-white px-3 py-1.5 rounded-xl border border-slate-200 whitespace-nowrap self-start sm:self-center">
+                  ✍️ เขียนคำอังกฤษด้วย Apple Pencil
+                </span>
+              ) : (
+                <div className="flex items-center gap-2 bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded-xl self-start sm:self-center">
+                  <span className="text-xs font-bold text-indigo-700">เฉลยเปิดแล้ว</span>
+                </div>
+              )}
             </div>
           ) : (
             /* EN_TO_TH Mode: Show English Word at top -> write Thai meaning */
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50 border border-slate-200/80 p-5 rounded-2xl">
               <div className="flex flex-col gap-1">
                 <span className="text-xs font-bold uppercase tracking-wider text-indigo-600">
-                  📌 โจทย์คำศัพท์ภาษาอังกฤษ (ทาย/เขียนคำแปลไทย)
+                  📌 โจทย์คำศัพท์ภาษาอังกฤษ (เขียน/ทายความหมายภาษาไทย)
                 </span>
                 <div className="flex items-baseline gap-3 mt-1">
-                  <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-slate-900">
+                  <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-slate-900">
                     {vocab.word}
                   </h1>
                   {vocab.phonetic && (
@@ -280,14 +255,16 @@ export default function PracticeSession() {
             </div>
           )}
 
-          {/* iPad Apple Pencil Handwriting Pad */}
-          <CanvasLoader
-            wordToPractice={vocab.word}
-            showGuidelineWord={practiceDirection === "EN_TO_TH" || showAnswer}
-          />
+          {/* iPad Apple Pencil Massive Full-Screen Grid Handwriting Pad ("ทำให้โซนเขียนเต็มหน้าจอ" + "ลายตารางจาง ๆ") */}
+          <div className="w-full flex-1 flex flex-col">
+            <CanvasLoader
+              wordToPractice={vocab.word}
+              showGuidelineWord={practiceDirection === "EN_TO_TH" || showAnswer}
+            />
+          </div>
 
           {/* Reveal Section & AI Example Sentences */}
-          <div className="flex flex-col gap-4 mt-2">
+          <div className="flex flex-col gap-4 pt-2">
             {!showAnswer ? (
               <button
                 type="button"
@@ -302,7 +279,7 @@ export default function PracticeSession() {
                 </span>
               </button>
             ) : (
-              <div className="flex flex-col gap-5 p-6 sm:p-8 bg-slate-50 rounded-2xl border border-slate-200 animate-fadeIn shadow-2xs">
+              <div className="flex flex-col gap-5 p-6 bg-slate-50 rounded-2xl border border-slate-200 animate-fadeIn shadow-2xs">
                 {/* Revealed Answer Box */}
                 {practiceDirection === "TH_TO_EN" ? (
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 bg-white border border-indigo-200 rounded-2xl shadow-xs">

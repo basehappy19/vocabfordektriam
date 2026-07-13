@@ -12,8 +12,15 @@ const DynamicDrawingPad = dynamic(
         role="status"
         aria-label="กำลังโหลดกระดานเขียนคำศัพท์สำหรับ Apple Pencil (Loading iPad Drawing Canvas)"
       >
-        <div className="h-12 w-full bg-slate-200 dark:bg-slate-800 rounded-xl" />
-        <div className="w-full h-[320px] sm:h-[400px] md:h-[460px] bg-slate-100 dark:bg-slate-850 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 flex items-center justify-center">
+        <div className="h-12 w-full bg-slate-200 rounded-xl" />
+        <div
+          className="w-full min-h-[480px] sm:min-h-[580px] md:min-h-[660px] flex-1 rounded-3xl border-2 border-dashed border-slate-300 flex items-center justify-center shadow-inner"
+          style={{
+            backgroundColor: "#ffffff",
+            backgroundImage: `linear-gradient(to right, #e2e8f0 1px, transparent 1px), linear-gradient(to bottom, #e2e8f0 1px, transparent 1px)`,
+            backgroundSize: "32px 32px",
+          }}
+        >
           <div className="flex flex-col items-center gap-2 text-slate-400">
             <svg
               className="w-8 h-8 animate-spin text-indigo-500"
