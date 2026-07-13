@@ -33,6 +33,62 @@ interface PracticeSessionProps {
   initialCategory?: string;
 }
 
+// Common synonym mapping dictionary for TCAS / TGAT / A-Level words to support alternative correct answers ("บางทีคนตอบความหมายอีกแบบ ก็ให้ถูกบางคำมีหลายความหมาย")
+const SYNONYM_DICTIONARY: Record<string, string[]> = {
+  mitigate: ["alleviate", "relieve", "lessen", "reduce", "soothe", "ease", "diminish", "assuage"],
+  alleviate: ["mitigate", "relieve", "lessen", "reduce", "soothe", "ease", "diminish", "assuage"],
+  meticulous: ["thorough", "careful", "scrupulous", "precise", "fastidious", "diligent", "accurate"],
+  procrastinate: ["delay", "postpone", "defer", "put off", "stall"],
+  ubiquitous: ["omnipresent", "pervasive", "universal", "common", "everywhere", "widespread"],
+  resilient: ["tough", "strong", "hardy", "flexible", "durable", "buoyant"],
+  ambiguous: ["unclear", "vague", "equivocal", "obscure", "uncertain", "cryptic"],
+  inevitable: ["unavoidable", "certain", "ineluctable", "destined", "sure"],
+};
+
+/**
+ * Smart flexible verification:
+ * - In TH_TO_EN: exact English word OR valid synonyms in dictionary OR slash variants.
+ * - In EN_TO_TH: exact meaning OR matching any individual Thai meaning token inside comma/slash separated definition.
+ */
+function checkIsCorrectAnswer(typed: string, vocab: VocabData, direction: "TH_TO_EN" | "EN_TO_TH"): boolean {
+  const cleanTyped = typed.trim().toLowerCase();
+  if (!cleanTyped || cleanTyped.length < 2) return false;
+
+  if (direction === "TH_TO_EN") {
+    const mainWord = vocab.word.trim().toLowerCase();
+    // 1. Exact match
+    if (cleanTyped === mainWord) return true;
+
+    // 2. Check known synonyms dictionary
+    const synonyms = SYNONYM_DICTIONARY[mainWord] || [];
+    if (synonyms.includes(cleanTyped)) return true;
+
+    // 3. Check if typed is inside slash/comma variants if vocab.word has multiple spellings
+    const wordParts = mainWord.split(/[,/]/).map((w) => w.trim());
+    if (wordParts.includes(cleanTyped)) return true;
+
+    return false;
+  } else {
+    // EN_TO_TH direction: student types Thai meaning (e.g. "พิถีพิถัน" when meaning is "พิถีพิถัน, รอบคอบ, ละเอียดลอออย่างยิ่ง")
+    const cleanMeaning = vocab.meaning.trim();
+    if (cleanMeaning === typed.trim()) return true;
+
+    // Split multi-meaning Thai definition by comma, slash, or parentheses
+    const meaningTokens = cleanMeaning
+      .split(/[,/()]/)
+      .map((m) => m.trim())
+      .filter((m) => m.length >= 2);
+
+    for (const token of meaningTokens) {
+      if (typed.trim() === token || token.includes(typed.trim()) || typed.trim().includes(token)) {
+        if (typed.trim().length >= 3) return true; // prevent accidental 1-2 character false matches
+      }
+    }
+
+    return false;
+  }
+}
+
 export default function PracticeSession({ initialCategory = "" }: PracticeSessionProps) {
   const [vocab, setVocab] = useState<VocabData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -189,22 +245,26 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                   </div>
                 )}
 
-                {/* Compact inline typing box for PC/mobile auto-reveal */}
-                {!showAnswer && practiceDirection === "TH_TO_EN" && (
-                  <div className="flex items-center gap-1.5 bg-slate-100/90 focus-within:bg-white focus-within:ring-2 focus-within:ring-indigo-500 px-3 py-1 rounded-xl border border-slate-200 transition-all w-56 sm:w-64">
+                {/* Compact inline typing box for PC/mobile flexible auto-reveal */}
+                {!showAnswer && (
+                  <div className="flex items-center gap-1.5 bg-slate-100/90 focus-within:bg-white focus-within:ring-2 focus-within:ring-indigo-500 px-3 py-1 rounded-xl border border-slate-200 transition-all w-60 sm:w-72">
                     <span className="text-xs">⌨️</span>
                     <input
                       type="text"
-                      placeholder="พิมพ์ถูกเป๊ะเฉลยทันที..."
+                      placeholder={
+                        practiceDirection === "TH_TO_EN"
+                          ? "พิมพ์อังกฤษ (หรือคำที่มีความหมายเดียวกัน)..."
+                          : "พิมพ์ความหมายภาษาไทย..."
+                      }
                       value={typedInput}
                       onChange={(e) => {
                         const val = e.target.value;
                         setTypedInput(val);
-                        if (val.trim().toLowerCase() === vocab.word.toLowerCase()) {
+                        if (vocab && checkIsCorrectAnswer(val, vocab, practiceDirection)) {
                           setShowAnswer(true);
                         }
                       }}
-                      aria-label="พิมพ์คำศัพท์ภาษาอังกฤษเพื่อตรวจคำตอบอัตโนมัติ"
+                      aria-label="พิมพ์คำศัพท์หรือคำแปลเพื่อตรวจคำตอบและเฉลยอัตโนมัติ"
                       className="w-full bg-transparent text-xs sm:text-sm font-bold text-slate-900 focus:outline-none placeholder:text-slate-400 placeholder:font-normal"
                     />
                   </div>

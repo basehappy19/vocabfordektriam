@@ -30,7 +30,7 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  console.log("🌱 Seeding initial high-yield TCAS / TGAT / A-Level vocabulary...");
+  console.log("🌱 Seeding high-yield TCAS / TGAT / A-Level vocabulary with real-life daily usage sentences...");
 
   const initialVocab = [
     {
@@ -40,9 +40,8 @@ async function main() {
       category: "TGAT-Eng",
       difficultyLevel: 4,
       phonetic: "yoo-BIK-wih-tus",
-      // Left NULL intentionally to test and demonstrate Cost-Saving Lazy AI Generation!
-      exampleSentence: null,
-      exampleTarget: null,
+      exampleSentence: "Smartphones have become ubiquitous in modern society, allowing people to stay connected anywhere they go.",
+      exampleTarget: "สมาร์ตโฟนได้กลายเป็นสิ่งที่พบเห็นได้ทั่วไปในสังคมปัจจุบัน ทำให้ผู้คนสามารถเชื่อมต่อกันได้ทุกที่ที่ไป",
     },
     {
       word: "mitigate",
@@ -51,8 +50,8 @@ async function main() {
       category: "A-Level",
       difficultyLevel: 3,
       phonetic: "MIT-ih-gayt",
-      exampleSentence: null,
-      exampleTarget: null,
+      exampleSentence: "Planting more trees along the highway will help mitigate air pollution and traffic noise for nearby residents.",
+      exampleTarget: "การปลูกต้นไม้เพิ่มขึ้นตามแนวทางหลวงจะช่วยบรรเทามลพิษทางอากาศและเสียงรบกวนจากการจราจรให้แก่ผู้อยู่อาศัยใกล้เคียง",
     },
     {
       word: "meticulous",
@@ -61,8 +60,8 @@ async function main() {
       category: "TGAT-Eng",
       difficultyLevel: 4,
       phonetic: "muh-TIK-yuh-lus",
-      exampleSentence: null,
-      exampleTarget: null,
+      exampleSentence: "She is always meticulous about keeping her financial records organized and accurate down to the last cent.",
+      exampleTarget: "เธอมักจะพิถีพิถันและรอบคอบในการจัดทำบันทึกทางการเงินให้เป็นระเบียบและถูกต้องเสมอจนถึงเซ็นต์สุดท้าย",
     },
     {
       word: "procrastinate",
@@ -71,20 +70,51 @@ async function main() {
       category: "TCAS-Academic",
       difficultyLevel: 3,
       phonetic: "pro-KRAS-tuh-nayt",
-      exampleSentence: null,
-      exampleTarget: null,
+      exampleSentence: "If you procrastinate on starting your project until the final night, the quality of your work will suffer.",
+      exampleTarget: "หากคุณผัดวันประกันพรุ่งในการเริ่มทำโปรเจกต์จนถึงคืนสุดท้าย คุณภาพงานของคุณก็จะลดลง",
+    },
+    {
+      word: "alleviate",
+      meaning: "บรรเทา, ทำให้รุนแรงน้อยลง, ผ่อนคลาย",
+      partOfSpeech: "Verb",
+      category: "A-Level",
+      difficultyLevel: 3,
+      phonetic: "uh-LEE-vee-ayt",
+      exampleSentence: "Taking a short walk in the park can help alleviate chronic stress and clear your mind.",
+      exampleTarget: "การเดินเล่นสั้น ๆ ในสวนสาธารณะสามารถช่วยบรรเทาความเครียดเรื้อรังและทำให้จิตใจปลอดโปร่งได้",
     },
   ];
 
   for (const item of initialVocab) {
     await prisma.vocabulary.upsert({
       where: { word: item.word },
-      update: {},
+      update: {
+        exampleSentence: item.exampleSentence,
+        exampleTarget: item.exampleTarget,
+      },
       create: item,
     });
   }
 
-  console.log("✅ Seed completed successfully! Words added with null exampleSentence to test Lazy AI Generation.");
+  // Also clean up any old meta-study sentences ("Understanding the word...") across the database
+  const badRows = await prisma.vocabulary.findMany({
+    where: {
+      OR: [
+        { exampleSentence: { contains: "Understanding the word" } },
+        { exampleSentence: { contains: "crucial for achieving high scores" } },
+      ],
+    },
+  });
+
+  for (const row of badRows) {
+    console.log(`🧹 Resetting old meta sentence for word: "${row.word}" so it can get real-life usage...`);
+    await prisma.vocabulary.update({
+      where: { id: row.id },
+      data: { exampleSentence: null, exampleTarget: null },
+    });
+  }
+
+  console.log("✅ Seed completed and real-life daily usage examples updated successfully!");
 }
 
 main()
