@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { generateExampleForVocab } from "@/lib/ai";
+import { getCefrFromNumber } from "@/lib/cefr";
 
 export async function GET(request: NextRequest) {
   try {
@@ -156,6 +157,7 @@ export async function GET(request: NextRequest) {
         partOfSpeech: selectedVocab.partOfSpeech,
         category: selectedVocab.category,
         difficultyLevel: selectedVocab.difficultyLevel,
+        cefrLevel: selectedVocab.cefrLevel || getCefrFromNumber(selectedVocab.difficultyLevel),
         phonetic: selectedVocab.phonetic,
         exampleSentence,
         exampleTarget,

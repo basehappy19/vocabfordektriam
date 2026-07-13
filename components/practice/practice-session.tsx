@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import CanvasLoader from "@/components/canvas/canvas-loader";
 import TTSButton from "@/components/tts/tts-button";
+import { getCefrBadgeProps } from "@/lib/cefr";
 
 interface VocabData {
   id: string;
@@ -12,6 +13,7 @@ interface VocabData {
   partOfSpeech: string;
   category: string;
   difficultyLevel: number;
+  cefrLevel?: string;
   phonetic?: string;
   exampleSentence?: string | null;
   exampleTarget?: string | null;
@@ -225,9 +227,14 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                   <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-full text-[11px] font-bold uppercase tracking-wider border border-indigo-200/80">
                     {vocab.category}
                   </span>
-                  <span className="px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full text-[11px] font-bold border border-amber-200/60">
-                    Level {vocab.difficultyLevel} ⭐
-                  </span>
+                  {(() => {
+                    const cefr = getCefrBadgeProps(vocab.cefrLevel || vocab.difficultyLevel);
+                    return (
+                      <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-extrabold border ${cefr.colorClass}`}>
+                        {cefr.badgeText}
+                      </span>
+                    );
+                  })()}
                 </div>
 
                 {practiceDirection === "TH_TO_EN" ? (
