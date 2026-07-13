@@ -28,7 +28,11 @@ interface VocabData {
   };
 }
 
-export default function PracticeSession() {
+interface PracticeSessionProps {
+  initialCategory?: string;
+}
+
+export default function PracticeSession({ initialCategory = "" }: PracticeSessionProps) {
   const [vocab, setVocab] = useState<VocabData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,12 +41,16 @@ export default function PracticeSession() {
   const [practiceDirection, setPracticeDirection] = useState<"TH_TO_EN" | "EN_TO_TH">("TH_TO_EN");
   const [showAnswer, setShowAnswer] = useState(false);
   const [isReviewing, setIsReviewing] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [selectedCategory, setSelectedCategory] = useState<string>(
+    initialCategory === "all" ? "" : initialCategory
+  );
+  const [typedInput, setTypedInput] = useState("");
 
   const fetchNextVocab = useCallback(async () => {
     setLoading(true);
     setError(null);
     setShowAnswer(false);
+    setTypedInput("");
 
     try {
       const url = selectedCategory
@@ -102,7 +110,7 @@ export default function PracticeSession() {
 
   return (
     <div className="w-full flex flex-col flex-1 gap-4 text-slate-900 font-sans">
-      {/* Sleek Minimal Controls Strip ("ลด Text ให้ดู Modern") */}
+      {/* Sleek Minimal Controls Strip */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-white/80 backdrop-blur-sm p-3 rounded-2xl border border-slate-200/80 shadow-2xs">
         <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200/60">
           <button
@@ -211,11 +219,10 @@ export default function PracticeSession() {
 
           {/* Primary Prompt Display Card based on Direction */}
           {practiceDirection === "TH_TO_EN" ? (
-            /* TH_TO_EN Mode: Show Thai Meaning Prominently at top -> write English */
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-slate-50 border border-slate-200/80 p-5 rounded-2xl">
               <div className="flex flex-col gap-1">
                 <span className="text-xs font-bold uppercase tracking-wider text-indigo-600">
-                  📌 โจทย์ความหมายภาษาไทย (เขียนศัพท์อังกฤษลงในตารางด้านล่าง)
+                  📌 โจทย์ความหมายภาษาไทย
                 </span>
                 <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-900 leading-snug">
                   {vocab.meaning}
@@ -223,7 +230,7 @@ export default function PracticeSession() {
               </div>
               {!showAnswer ? (
                 <span className="text-xs font-semibold text-slate-500 bg-white px-3 py-1.5 rounded-xl border border-slate-200 whitespace-nowrap self-start sm:self-center">
-                  ✍️ เขียนคำอังกฤษด้วย Apple Pencil
+                  ✍️ เขียนหรือพิมพ์คำอังกฤษ
                 </span>
               ) : (
                 <div className="flex items-center gap-2 bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded-xl self-start sm:self-center">
@@ -232,11 +239,10 @@ export default function PracticeSession() {
               )}
             </div>
           ) : (
-            /* EN_TO_TH Mode: Show English Word at top -> write Thai meaning */
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50 border border-slate-200/80 p-5 rounded-2xl">
               <div className="flex flex-col gap-1">
                 <span className="text-xs font-bold uppercase tracking-wider text-indigo-600">
-                  📌 โจทย์คำศัพท์ภาษาอังกฤษ (เขียน/ทายความหมายภาษาไทย)
+                  📌 โจทย์คำศัพท์ภาษาอังกฤษ (ทายความหมายภาษาไทย)
                 </span>
                 <div className="flex items-baseline gap-3 mt-1">
                   <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-slate-900">
@@ -255,7 +261,30 @@ export default function PracticeSession() {
             </div>
           )}
 
-          {/* iPad Apple Pencil Massive Full-Screen Grid Handwriting Pad ("ทำให้โซนเขียนเต็มหน้าจอ" + "ลายตารางจาง ๆ") */}
+          {/* Keyboard Typing Input Box for Non-iPad / Exact Spelling Auto-Reveal */}
+          {!showAnswer && practiceDirection === "TH_TO_EN" && (
+            <div className="w-full flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 bg-indigo-50/50 border border-indigo-100 p-3.5 rounded-2xl">
+              <div className="flex items-center gap-1.5 text-indigo-900 font-bold text-xs whitespace-nowrap px-1">
+                <span>⌨️ สำหรับ PC / มือถือ (พิมพ์ถูกเป๊ะเฉลยทันที):</span>
+              </div>
+              <input
+                type="text"
+                placeholder="พิมพ์คำศัพท์ภาษาอังกฤษที่นี่โดยไม่ต้องกดปุ่มเฉลย..."
+                value={typedInput}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setTypedInput(val);
+                  if (val.trim().toLowerCase() === vocab.word.toLowerCase()) {
+                    setShowAnswer(true);
+                  }
+                }}
+                aria-label="พิมพ์คำศัพท์ภาษาอังกฤษเพื่อตรวจคำตอบอัตโนมัติ"
+                className="flex-1 w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 focus:outline-none text-base font-bold text-slate-900 bg-white placeholder:text-slate-400 placeholder:font-normal shadow-2xs"
+              />
+            </div>
+          )}
+
+          {/* iPad Apple Pencil Massive Full-Screen Grid Handwriting Pad */}
           <div className="w-full flex-1 flex flex-col">
             <CanvasLoader
               wordToPractice={vocab.word}
@@ -280,30 +309,25 @@ export default function PracticeSession() {
               </button>
             ) : (
               <div className="flex flex-col gap-5 p-6 bg-slate-50 rounded-2xl border border-slate-200 animate-fadeIn shadow-2xs">
-                {/* Revealed Answer Box */}
+                {/* Revealed Answer Box without crossed-out text */}
                 {practiceDirection === "TH_TO_EN" ? (
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 bg-white border border-indigo-200 rounded-2xl shadow-xs">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-xs font-bold uppercase tracking-wider text-indigo-600">
-                        ✨ เฉลยคำศัพท์ภาษาอังกฤษ (Answer Word)
+                    <div className="flex items-baseline gap-3">
+                      <span className="text-3xl sm:text-4xl font-black text-slate-900">
+                        {vocab.word}
                       </span>
-                      <div className="flex items-baseline gap-3">
-                        <span className="text-3xl sm:text-4xl font-black text-slate-900">
-                          {vocab.word}
+                      {vocab.phonetic && (
+                        <span className="text-base sm:text-lg font-mono text-slate-500 font-medium">
+                          /{vocab.phonetic}/
                         </span>
-                        {vocab.phonetic && (
-                          <span className="text-base sm:text-lg font-mono text-slate-500 font-medium">
-                            /{vocab.phonetic}/
-                          </span>
-                        )}
-                      </div>
+                      )}
                     </div>
                     <TTSButton text={vocab.word} lang="en-US" size="lg" label="ฟังเสียงคำศัพท์" />
                   </div>
                 ) : (
                   <div className="flex flex-col gap-1 p-5 bg-white border border-indigo-200 rounded-2xl shadow-xs">
                     <span className="text-xs font-bold uppercase tracking-wider text-indigo-600">
-                      ✨ เฉลยคำแปลและความหมาย (Meaning)
+                      ✨ เฉลยคำแปลและความหมาย
                     </span>
                     <p className="text-xl sm:text-2xl font-bold text-slate-900">
                       {vocab.meaning}
@@ -311,22 +335,10 @@ export default function PracticeSession() {
                   </div>
                 )}
 
-                {/* AI Example Sentence Block */}
+                {/* AI Example Sentence Block without crossed-out headers */}
                 {vocab.exampleSentence && (
                   <div className="flex flex-col gap-2 pt-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
-                        <span>💡 ประโยคตัวอย่างเตรียมสอบ (Example Sentence)</span>
-                        {vocab.meta?.wasAiGenerated ? (
-                          <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded text-[10px] font-bold border border-emerald-200">
-                            🤖 AI Generated Now (Lazy-Cached to DB)
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-[10px] font-bold border border-blue-200">
-                            ⚡ Served Direct from DB (No AI Cost)
-                          </span>
-                        )}
-                      </span>
+                    <div className="flex items-center justify-end">
                       <TTSButton
                         text={vocab.exampleSentence}
                         lang="en-US"
@@ -347,60 +359,59 @@ export default function PracticeSession() {
                   </div>
                 )}
 
-                {/* Spaced Repetition Leitner Box Grading Buttons */}
+                {/* Spaced Repetition Leitner Box Grading Buttons / Next Button */}
                 <div className="flex flex-col gap-3 pt-4 border-t border-slate-200">
-                  <span className="text-xs font-bold text-center text-slate-600 mb-1">
-                    {mode === "AUTHENTICATED"
-                      ? "ให้คะแนนความจำของคุณเพื่อปรับรอบทบทวนถัดไป (Spaced Repetition Leitner Box Algorithm):"
-                      : "กดเพื่อสุ่มคำศัพท์ถัดไป (Guest Mode):"}
-                  </span>
-
                   {mode === "AUTHENTICATED" ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      <button
-                        type="button"
-                        disabled={isReviewing}
-                        onClick={() => handleSrsReview("again")}
-                        aria-label="จำไม่ได้เลย กลับไปเริ่มทบทวนใหม่ในกล่อง 1 (Again / Box 1)"
-                        className="flex flex-col items-center justify-center p-3 rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-900 font-bold transition-all border border-rose-300 shadow-2xs"
-                      >
-                        <span className="text-sm">❌ จำไม่ได้ (Again)</span>
-                        <span className="text-[11px] opacity-80 font-normal">ทบทวนพรุ่งนี้ (Box 1)</span>
-                      </button>
+                    <>
+                      <span className="text-xs font-bold text-center text-slate-600 mb-1">
+                        ให้คะแนนความจำของคุณเพื่อปรับรอบทบทวนถัดไป (Spaced Repetition):
+                      </span>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <button
+                          type="button"
+                          disabled={isReviewing}
+                          onClick={() => handleSrsReview("again")}
+                          aria-label="จำไม่ได้เลย กลับไปเริ่มทบทวนใหม่ในกล่อง 1 (Again / Box 1)"
+                          className="flex flex-col items-center justify-center p-3 rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-900 font-bold transition-all border border-rose-300 shadow-2xs"
+                        >
+                          <span className="text-sm">❌ จำไม่ได้ (Again)</span>
+                          <span className="text-[11px] opacity-80 font-normal">ทบทวนพรุ่งนี้ (Box 1)</span>
+                        </button>
 
-                      <button
-                        type="button"
-                        disabled={isReviewing}
-                        onClick={() => handleSrsReview("hard")}
-                        aria-label="จำยาก ต้องใช้ความคิด (Hard / Same Box)"
-                        className="flex flex-col items-center justify-center p-3 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold transition-all border border-amber-300 shadow-2xs"
-                      >
-                        <span className="text-sm">⚠️ จำยาก (Hard)</span>
-                        <span className="text-[11px] opacity-80 font-normal">ทบทวนรอบเดิม</span>
-                      </button>
+                        <button
+                          type="button"
+                          disabled={isReviewing}
+                          onClick={() => handleSrsReview("hard")}
+                          aria-label="จำยาก ต้องใช้ความคิด (Hard / Same Box)"
+                          className="flex flex-col items-center justify-center p-3 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold transition-all border border-amber-300 shadow-2xs"
+                        >
+                          <span className="text-sm">⚠️ จำยาก (Hard)</span>
+                          <span className="text-[11px] opacity-80 font-normal">ทบทวนรอบเดิม</span>
+                        </button>
 
-                      <button
-                        type="button"
-                        disabled={isReviewing}
-                        onClick={() => handleSrsReview("good")}
-                        aria-label="จำได้ดี เลื่อนระดับกล่องขึ้น 1 ชั้น (Good / Box +1)"
-                        className="flex flex-col items-center justify-center p-3 rounded-xl bg-blue-100 hover:bg-blue-200 text-blue-900 font-bold transition-all border border-blue-300 shadow-2xs"
-                      >
-                        <span className="text-sm">✅ จำได้ดี (Good)</span>
-                        <span className="text-[11px] opacity-80 font-normal">เลื่อนระดับ +1 กล่อง</span>
-                      </button>
+                        <button
+                          type="button"
+                          disabled={isReviewing}
+                          onClick={() => handleSrsReview("good")}
+                          aria-label="จำได้ดี เลื่อนระดับกล่องขึ้น 1 ชั้น (Good / Box +1)"
+                          className="flex flex-col items-center justify-center p-3 rounded-xl bg-blue-100 hover:bg-blue-200 text-blue-900 font-bold transition-all border border-blue-300 shadow-2xs"
+                        >
+                          <span className="text-sm">✅ จำได้ดี (Good)</span>
+                          <span className="text-[11px] opacity-80 font-normal">เลื่อนระดับ +1 กล่อง</span>
+                        </button>
 
-                      <button
-                        type="button"
-                        disabled={isReviewing}
-                        onClick={() => handleSrsReview("easy")}
-                        aria-label="ง่ายมาก แม่นยำ เลื่อนระดับกล่องขึ้น 2 ชั้นหรือมาสเตอร์ (Easy / Box +2)"
-                        className="flex flex-col items-center justify-center p-3 rounded-xl bg-emerald-100 hover:bg-emerald-200 text-emerald-900 font-bold transition-all border border-emerald-300 shadow-2xs"
-                      >
-                        <span className="text-sm">🌟 ง่ายมาก (Easy)</span>
-                        <span className="text-[11px] opacity-80 font-normal">เลื่อนเร็ว +2 กล่อง</span>
-                      </button>
-                    </div>
+                        <button
+                          type="button"
+                          disabled={isReviewing}
+                          onClick={() => handleSrsReview("easy")}
+                          aria-label="ง่ายมาก แม่นยำ เลื่อนระดับกล่องขึ้น 2 ชั้นหรือมาสเตอร์ (Easy / Box +2)"
+                          className="flex flex-col items-center justify-center p-3 rounded-xl bg-emerald-100 hover:bg-emerald-200 text-emerald-900 font-bold transition-all border border-emerald-300 shadow-2xs"
+                        >
+                          <span className="text-sm">🌟 ง่ายมาก (Easy)</span>
+                          <span className="text-[11px] opacity-80 font-normal">เลื่อนเร็ว +2 กล่อง</span>
+                        </button>
+                      </div>
+                    </>
                   ) : (
                     <button
                       type="button"
@@ -408,7 +419,7 @@ export default function PracticeSession() {
                       aria-label="ฝึกคำศัพท์ถัดไป"
                       className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-extrabold rounded-xl shadow-sm transition-colors text-center text-base"
                     >
-                      ➡️ สุ่มฝึกคำศัพท์ถัดไป (Next Random Word)
+                      คำศัพท์ถัดไป ➡️
                     </button>
                   )}
                 </div>
