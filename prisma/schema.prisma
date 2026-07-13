@@ -1,0 +1,165 @@
+// prisma/schema.prisma
+// Database schema for VocabForDekTriam (Thai Student iPad Vocabulary Practice)
+// Designed for PostgreSQL with optimal indexes for Spaced Repetition System (SRS)
+
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "library"
+}
+
+// ==========================================
+// NextAuth.js Standard Authentication Models
+// ==========================================
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String  @map("user_id")
+  type               String
+  provider           String
+  providerAccountId  String  @map("provider_account_id")
+  refresh_token      String? @db.Text
+  access_token       String? @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String? @db.Text
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime? @map("email_verified")
+  image         String?
+  role          UserRole  @default(STUDENT)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // NextAuth Relations
+  accounts      Account[]
+  sessions      Session[]
+
+  // Custom VocabForDekTriam Relations
+  progress      UserProgress[]
+  activityLogs  ActivityLog[]
+
+  @@map("users")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+enum UserRole {
+  STUDENT
+  ADMIN
+}
+
+// ==========================================
+// Custom VocabForDekTriam Domain Models
+// ==========================================
+
+model Vocabulary {
+  id              String   @id @default(cuid())
+  word            String   @unique @db.VarChar(100)
+  meaning         String   @db.Text
+  partOfSpeech    String   @map("part_of_speech") @db.VarChar(50) // e.g., Noun, Verb, Adjective, Idiom
+  category        String   @db.VarChar(100) // e.g., TGAT-Eng, A-Level, TCAS Core, Academic
+  
+  // Cost-Saving AI Integration: Lazy-Generated Example Sentence & Target Translation
+  // When null, generated on first encounter via AI SDK and saved immediately.
+  exampleSentence String?  @map("example_sentence") @db.Text
+  exampleTarget   String?  @map("example_target") @db.Text
+  
+  difficultyLevel Int      @default(3) @map("difficulty_level") // 1 (Easy) to 5 (DekTriam Master)
+  phonetic        String?  @db.VarChar(100)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  userProgress    UserProgress[]
+
+  @@index([category])
+  @@index([difficultyLevel])
+  @@map("vocabulary")
+}
+
+model UserProgress {
+  id           String     @id @default(cuid())
+  userId       String     @map("user_id")
+  vocabId      String     @map("vocab_id")
+  
+  // Spaced Repetition System (Leitner Box System Level 1 to 5)
+  // Box 1: Review every 1 day
+  // Box 2: Review every 3 days
+  // Box 3: Review every 7 days
+  // Box 4: Review every 14 days
+  // Box 5: Review every 30 days (Mastered)
+  boxLevel     Int        @default(1) @map("box_level")
+  nextReview   DateTime   @default(now()) @map("next_review")
+  lastReviewed DateTime?  @map("last_reviewed")
+  
+  // Stats per item
+  reviewCount  Int        @default(0) @map("review_count")
+  correctCount Int        @default(0) @map("correct_count")
+  streak       Int        @default(0)
+  
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  // Relations
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vocabulary Vocabulary @relation(fields: [vocabId], references: [id], onDelete: Cascade)
+
+  // Unique constraint ensuring one SRS tracking record per user per vocabulary item
+  @@unique([userId, vocabId])
+  
+  // Crucial compound index for ultra-fast query of due SRS items for a specific user
+  @@index([userId, nextReview])
+  @@map("user_progress")
+}
+
+model ActivityLog {
+  id              String   @id @default(cuid())
+  userId          String   @map("user_id")
+  date            DateTime @default(now()) @db.Date
+  wordsPracticed  Int      @default(0) @map("words_practiced")
+  wordsMastered   Int      @default(0) @map("words_mastered")
+  durationSeconds Int      @default(0) @map("duration_seconds")
+  deviceType      String?  @default("iPad") @map("device_type") // e.g., iPad, Desktop, Mobile
+  notes           String?  @db.Text
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Unique constraint so each user has one daily summarized activity record that gets incremented
+  @@unique([userId, date])
+  @@index([userId, date])
+  @@map("activity_logs")
+}

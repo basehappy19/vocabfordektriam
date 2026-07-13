@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16
+    container_name: dektriam_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: vocab_dektriam
+      POSTGRES_PASSWORD: 0RFkSZYQG0029FKi
+      POSTGRES_DB: vocab_dektriam
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
