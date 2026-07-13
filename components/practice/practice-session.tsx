@@ -54,6 +54,133 @@ const SYNONYM_DICTIONARY: Record<string, string[]> = {
   inevitable: ["unavoidable", "certain", "ineluctable", "destined", "sure"],
 };
 
+const SYNONYM_PHONETIC_DICTIONARY: Record<string, string> = {
+  // Main words
+  ubiquitous: "yoo-BIK-wih-tus",
+  mitigate: "MIT-ih-gayt",
+  resilient: "rih-ZIL-yunt",
+  meticulous: "muh-TIK-yuh-lus",
+  ambiguous: "am-BIG-yoo-us",
+  alleviate: "uh-LEE-vee-ayt",
+  scrutinize: "SKROO-tuh-nyze",
+  empathy: "EM-puh-thee",
+  collaborate: "kuh-LAB-uh-rayt",
+  exacerbate: "ig-ZAS-er-bayt",
+  procrastinate: "pro-KRAS-tuh-nayt",
+  paradigm: "PAR-uh-dyme",
+  inevitable: "in-EV-ih-tuh-bul",
+
+  // ubiquitous synonyms
+  omnipresent: "om-nih-PREZ-unt",
+  pervasive: "per-VAY-siv",
+  universal: "yoo-nuh-VER-sul",
+  widespread: "WYDE-spred",
+  common: "KOM-un",
+  everywhere: "EV-ree-wair",
+
+  // mitigate / alleviate synonyms
+  lessen: "LES-un",
+  relieve: "rih-LEEV",
+  reduce: "rih-DOOS",
+  soothe: "SOOTH",
+  ease: "EEZ",
+  diminish: "dih-MIN-ish",
+  assuage: "uh-SWAYJ",
+
+  // resilient synonyms
+  tough: "TUFF",
+  strong: "STRONG",
+  hardy: "HAR-dee",
+  flexible: "FLEK-suh-bul",
+  durable: "DYOOR-uh-bul",
+  buoyant: "BOY-unt",
+  adaptable: "uh-DAP-tuh-bul",
+
+  // meticulous synonyms
+  thorough: "THUR-oh",
+  careful: "KAIR-ful",
+  scrupulous: "SKROO-pyuh-lus",
+  precise: "prih-SYSE",
+  fastidious: "fah-STID-ee-us",
+  diligent: "DIL-ih-junt",
+  accurate: "AK-yuh-rut",
+
+  // ambiguous synonyms
+  unclear: "un-KLEER",
+  vague: "VAYG",
+  equivocal: "ih-KWIV-uh-kul",
+  obscure: "ub-SKYOOR",
+  uncertain: "un-SER-tun",
+  cryptic: "KRIP-tik",
+
+  // scrutinize synonyms
+  examine: "ig-ZAM-in",
+  inspect: "in-SPEKT",
+  analyze: "AN-uh-lyze",
+  "study carefully": "STUD-ee KAIR-ful-ee",
+  investigate: "in-VES-tuh-gayt",
+  probe: "PROHB",
+
+  // empathy synonyms
+  compassion: "kum-PASH-un",
+  understanding: "un-der-STAN-ding",
+  sympathy: "SIM-puh-thee",
+  care: "KAIR",
+  sensitivity: "sen-sih-TIV-ih-tee",
+
+  // collaborate synonyms
+  cooperate: "koh-OP-uh-rayt",
+  "team up": "TEEM UP",
+  "join forces": "JOYN FOR-suz",
+  "work together": "WERK tuh-GETH-er",
+  partner: "PART-ner",
+
+  // exacerbate synonyms
+  worsen: "WER-sun",
+  aggravate: "AG-ruh-vayt",
+  intensify: "in-TEN-suh-fye",
+  compound: "kum-POWND",
+  inflame: "in-FLAYM",
+
+  // procrastinate synonyms
+  delay: "dih-LAY",
+  postpone: "pohst-POHN",
+  defer: "dih-FER",
+  "put off": "PUT OFF",
+  stall: "STAWL",
+  dally: "DAL-ee",
+
+  // paradigm synonyms
+  model: "MOD-ul",
+  pattern: "PAT-ern",
+  framework: "FRAYM-werk",
+  standard: "STAN-derd",
+  archetype: "AR-kuh-type",
+  prototype: "PROH-tuh-type",
+
+  // inevitable synonyms
+  unavoidable: "un-uh-VOY-duh-bul",
+  certain: "SER-tun",
+  ineluctable: "in-ih-LUK-tuh-bul",
+  destined: "DES-tind",
+  sure: "SHOOR",
+};
+
+function getPhoneticForWord(word: string, vocab?: VocabData | null): string {
+  const clean = word.trim().toLowerCase();
+  if (vocab && clean === vocab.word.toLowerCase() && vocab.phonetic) {
+    return vocab.phonetic;
+  }
+  if (SYNONYM_PHONETIC_DICTIONARY[clean]) {
+    return SYNONYM_PHONETIC_DICTIONARY[clean];
+  }
+  return word
+    .trim()
+    .split(/\s+/)
+    .map((w) => w.toUpperCase())
+    .join(" ");
+}
+
 function checkIsCorrectAnswer(typed: string, vocab: VocabData, direction: "TH_TO_EN" | "EN_TO_TH"): boolean {
   const cleanTyped = typed.trim().toLowerCase();
   if (!cleanTyped || cleanTyped.length < 2) return false;
@@ -372,7 +499,7 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
     practiceDirection === "TH_TO_EN";
 
   const displayWord = isTypedCorrectAndDifferent && vocab ? typedInput.trim().toLowerCase() : vocab?.word || "";
-  const displayPhonetic = isTypedCorrectAndDifferent ? "" : vocab?.phonetic;
+  const displayPhonetic = getPhoneticForWord(displayWord, vocab);
   const displaySynonyms =
     isTypedCorrectAndDifferent && vocab
       ? [
@@ -607,7 +734,7 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                       <p className="text-lg sm:text-xl font-bold text-slate-800">{vocab.meaning}</p>
                       {displaySynonyms && displaySynonyms.length > 0 && (
                         <p className="text-xs sm:text-sm text-indigo-600 font-medium mt-1">
-                          🔗 คำพ้องความหมาย (Synonyms / คำหลัก): {displaySynonyms.join(", ")}
+                          🔗 คำพ้องความหมาย: {displaySynonyms.join(", ")}
                         </p>
                       )}
                     </div>
@@ -837,7 +964,7 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                       <p className="text-lg sm:text-xl font-bold text-slate-800">{vocab.meaning}</p>
                       {displaySynonyms && displaySynonyms.length > 0 && (
                         <p className="text-xs sm:text-sm text-indigo-600 font-medium mt-1">
-                          🔗 คำพ้องความหมาย (Synonyms / คำหลัก): {displaySynonyms.join(", ")}
+                          🔗 คำพ้องความหมาย: {displaySynonyms.join(", ")}
                         </p>
                       )}
                     </div>
