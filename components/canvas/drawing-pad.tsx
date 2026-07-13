@@ -26,6 +26,7 @@ export default function DrawingPad({
   onCanvasChange,
 }: DrawingPadProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const activePointerIdRef = useRef<number | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [strokeColor, setStrokeColor] = useState("#4f46e5"); // Indigo default
   const [strokeWidth, setStrokeWidth] = useState(4); // Clean smooth stroke
@@ -38,6 +39,41 @@ export default function DrawingPad({
     onDrawStateChangeRef.current = onDrawStateChange;
     onCanvasChangeRef.current = onCanvasChange;
   }, [onDrawStateChange, onCanvasChange]);
+
+  // CRITICAL: Attach non-passive native touch event listeners to completely block iPad Safari from selecting text or scrolling when drawing
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      e.preventDefault();
+      // If two or more touches (two fingers) touch simultaneously, cancel drawing right away ("สองนิ้วพร้อมกันออกมาเป็นสองเส้นเลยแก้ไข")
+      if (e.touches && e.touches.length > 1) {
+        setIsDrawing(false);
+        activePointerIdRef.current = null;
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      e.preventDefault();
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      e.preventDefault();
+    };
+
+    canvas.addEventListener("touchstart", handleTouchStart, { passive: false });
+    canvas.addEventListener("touchmove", handleTouchMove, { passive: false });
+    canvas.addEventListener("touchend", handleTouchEnd, { passive: false });
+    canvas.addEventListener("touchcancel", handleTouchEnd, { passive: false });
+
+    return () => {
+      canvas.removeEventListener("touchstart", handleTouchStart);
+      canvas.removeEventListener("touchmove", handleTouchMove);
+      canvas.removeEventListener("touchend", handleTouchEnd);
+      canvas.removeEventListener("touchcancel", handleTouchEnd);
+    };
+  }, []);
 
   const notifyCanvasChange = useCallback(() => {
     const canvas = canvasRef.current;
@@ -153,6 +189,20 @@ export default function DrawingPad({
   };
 
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    // 1. Block native iPad browser selection & gestures
+    e.preventDefault();
+    e.stopPropagation();
+
+    // 2. Ignore multi-touch / second pointer if one is already active ("และถ้าและสองนิ้วพร้อมกันออกมาเป็นสองเส้นเลยแก้ไข")
+    if (activePointerIdRef.current !== null && activePointerIdRef.current !== e.pointerId) {
+      return;
+    }
+    if (e.pointerType === "touch" && !e.isPrimary) {
+      return;
+    }
+
+    activePointerIdRef.current = e.pointerId;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -180,7 +230,14 @@ export default function DrawingPad({
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+
     if (!isDrawing) return;
+    if (activePointerIdRef.current !== null && activePointerIdRef.current !== e.pointerId) {
+      return;
+    }
+
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -198,11 +255,19 @@ export default function DrawingPad({
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (activePointerIdRef.current === e.pointerId) {
+      activePointerIdRef.current = null;
+    }
     if (!isDrawing) return;
     setIsDrawing(false);
     const canvas = canvasRef.current;
-    if (canvas) {
-      canvas.releasePointerCapture(e.pointerId);
+    if (canvas && canvas.hasPointerCapture(e.pointerId)) {
+      try {
+        canvas.releasePointerCapture(e.pointerId);
+      } catch (err) {}
     }
     notifyCanvasChange();
   };
@@ -237,7 +302,15 @@ export default function DrawingPad({
   };
 
   return (
-    <div className={`absolute inset-0 w-full h-full overflow-hidden ${className || ""}`}>
+    <div
+      className={`absolute inset-0 w-full h-full overflow-hidden select-none ${className || ""}`}
+      style={{
+        WebkitUserSelect: "none",
+        userSelect: "none",
+        WebkitTouchCallout: "none",
+        touchAction: "none",
+      }}
+    >
       {/* 100% Full Screen Grid Canvas Area ("ให้กระดานเขียนเต็มจอเลย ที่เหลือลอยทับไปเลย") */}
       <div
         className="absolute inset-0 w-full h-full overflow-hidden select-none"
@@ -245,6 +318,10 @@ export default function DrawingPad({
           backgroundColor: "#ffffff",
           backgroundImage: `linear-gradient(to right, #e2e8f0 1px, transparent 1px), linear-gradient(to bottom, #e2e8f0 1px, transparent 1px)`,
           backgroundSize: "32px 32px",
+          WebkitUserSelect: "none",
+          userSelect: "none",
+          WebkitTouchCallout: "none",
+          touchAction: "none",
         }}
       >
         {/* Floating GoodNotes-style Toolbar inside top-right of screen ("เครื่องมือสีต่าง ๆ ลอยคล้าย ๆ Goodnote") */}

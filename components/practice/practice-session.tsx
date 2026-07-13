@@ -252,6 +252,7 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
   const [isDrawingDevice, setIsDrawingDevice] = useState(false);
   const [hasUserDrawn, setHasUserDrawn] = useState(false);
   const [drawingDataUrl, setDrawingDataUrl] = useState<string | null>(null);
+  const [isConvertingOcr, setIsConvertingOcr] = useState(false);
 
   // History Stack for Previous / Back navigation
   const [history, setHistory] = useState<HistorySessionItem[]>([]);
@@ -459,25 +460,86 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
     }
   };
 
-  const handleRevealClick = () => {
+  const recognizeHandwritingFromDataUrl = async (dataUrl: string): Promise<string> => {
+    try {
+      const res = await fetch("/api/vocab/ocr", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          image: dataUrl,
+          expectedWords: vocab ? [vocab.word, ...(vocab.synonyms || []), vocab.meaning] : [],
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.status === "success" && data.text !== undefined) {
+          return data.text;
+        }
+      }
+    } catch (apiErr) {
+      console.warn("[API OCR fallback]:", apiErr);
+    }
+
+    try {
+      const Tesseract = (await import("tesseract.js")).default;
+      const result = await Tesseract.recognize(dataUrl, "eng+tha");
+      return result.data.text.trim().toLowerCase();
+    } catch (tessErr) {
+      console.error("[Tesseract OCR Error]:", tessErr);
+      return "";
+    }
+  };
+
+  const handleOcrConvertOnly = async () => {
+    if (!drawingDataUrl || !hasUserDrawn) return;
+    setIsConvertingOcr(true);
+    try {
+      const recognized = await recognizeHandwritingFromDataUrl(drawingDataUrl);
+      if (recognized) {
+        setTypedInput(recognized);
+      } else {
+        alert("ระบบอ่านอักษรไม่ชัดเจน ลองเขียนให้ตัวใหญ่และชัดเจนขึ้นครับ");
+      }
+    } finally {
+      setIsConvertingOcr(false);
+    }
+  };
+
+  const handleRevealClick = async () => {
     if (isDrawingDevice && !hasUserDrawn) return;
     if (!isDrawingDevice && !typedInput.trim()) return;
 
+    let textToCheck = typedInput.trim();
+    if (isDrawingDevice && !textToCheck && drawingDataUrl) {
+      setIsConvertingOcr(true);
+      try {
+        const recognized = await recognizeHandwritingFromDataUrl(drawingDataUrl);
+        if (recognized) {
+          textToCheck = recognized;
+          setTypedInput(recognized);
+        }
+      } finally {
+        setIsConvertingOcr(false);
+      }
+    }
+
     let newStatus: "IDLE" | "CORRECT" | "WRONG" = "IDLE";
-    if (typedInput.trim().length > 0 && vocab) {
-      if (checkIsCorrectAnswer(typedInput, vocab, practiceDirection)) {
+    if (textToCheck.length > 0 && vocab) {
+      if (checkIsCorrectAnswer(textToCheck, vocab, practiceDirection)) {
         newStatus = "CORRECT";
         recordGuestWordCompletion(vocab.id, vocab.collectionId, vocab.category);
         if (mode === "GUEST") setGuestCompletedCount((prev) => prev + 1);
       } else {
         newStatus = "WRONG";
       }
+    } else if (isDrawingDevice && hasUserDrawn) {
+      newStatus = "WRONG";
     } else {
       newStatus = "IDLE";
     }
     setAnswerStatus(newStatus);
     setShowAnswer(true);
-    syncCurrentToHistory({ showAnswer: true, answerStatus: newStatus });
+    syncCurrentToHistory({ showAnswer: true, answerStatus: newStatus, typedInput: textToCheck });
   };
 
   // Calculate Progress Stats
@@ -652,35 +714,63 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                 </div>
               )}
 
-              <div className="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-20 pointer-events-none w-full max-w-xl px-4 flex flex-col items-center justify-center">
+              <div className="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-20 pointer-events-none w-full max-w-2xl px-4 flex flex-col items-center justify-center gap-2">
+                {typedInput && !showAnswer && (
+                  <div className="pointer-events-auto bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-4 py-2 rounded-2xl border border-indigo-200 shadow-lg text-sm sm:text-base font-extrabold text-indigo-700 flex items-center gap-2 animate-fadeIn">
+                    <span>✏️ ระบบอ่านลายมือได้เป็น: <span className="underline decoration-indigo-400 font-black">{typedInput}</span></span>
+                    <button
+                      type="button"
+                      onClick={() => setTypedInput("")}
+                      className="text-xs bg-rose-50 text-rose-600 px-2 py-0.5 rounded-lg border border-rose-200 hover:bg-rose-100 font-bold ml-1 transition-colors"
+                    >
+                      ลบ/เขียนใหม่
+                    </button>
+                  </div>
+                )}
+
                 {!showAnswer ? (
-                  <div className="pointer-events-auto flex items-center justify-center gap-2 sm:gap-3 w-full sm:w-auto bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-2.5 rounded-3xl border border-slate-200/80 shadow-2xl">
+                  <div className="pointer-events-auto flex items-center justify-center gap-2 sm:gap-2.5 w-full sm:w-auto bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-2.5 rounded-3xl border border-slate-200/80 shadow-2xl flex-wrap">
                     <button
                       type="button"
                       onClick={handlePrev}
                       disabled={historyIndex <= 0}
-                      className="px-4 sm:px-5 py-3.5 rounded-2xl font-bold text-xs sm:text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all border border-slate-200 flex items-center gap-1.5"
+                      className="px-3.5 sm:px-4 py-3.5 rounded-2xl font-bold text-xs sm:text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all border border-slate-200 flex items-center gap-1 shrink-0"
                     >
                       ⬅️ ย้อนกลับ
                     </button>
 
+                    {hasUserDrawn && !typedInput && (
+                      <button
+                        type="button"
+                        onClick={handleOcrConvertOnly}
+                        disabled={isConvertingOcr}
+                        className="px-4 py-3.5 rounded-2xl font-extrabold text-xs sm:text-sm bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 transition-all flex items-center gap-1.5 shadow-xs shrink-0"
+                      >
+                        {isConvertingOcr ? "⏳ กำลังแปลง..." : "✨ แปลงลายมือเป็นข้อความ"}
+                      </button>
+                    )}
+
                     <button
                       type="button"
-                      disabled={!hasUserDrawn}
+                      disabled={!hasUserDrawn || isConvertingOcr}
                       onClick={handleRevealClick}
-                      className={`px-7 sm:px-10 py-3.5 rounded-2xl font-black text-base sm:text-lg transition-all flex items-center justify-center border shadow-md ${
-                        hasUserDrawn
+                      className={`px-6 sm:px-8 py-3.5 rounded-2xl font-black text-sm sm:text-base transition-all flex items-center justify-center border shadow-md shrink-0 ${
+                        hasUserDrawn && !isConvertingOcr
                           ? "bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white border-indigo-500 shadow-indigo-600/30 cursor-pointer animate-pulse"
                           : "bg-slate-200 text-slate-400 border-slate-300 cursor-not-allowed opacity-75 shadow-none"
                       }`}
                     >
-                      ดูเฉลย
+                      {isConvertingOcr
+                        ? "⏳ กำลังตรวจและแปลงลายมือ..."
+                        : typedInput
+                        ? "✅ ยืนยันตรวจคำตอบ"
+                        : "✨ แปลงและตรวจคำตอบ"}
                     </button>
 
                     <button
                       type="button"
                       onClick={handleNext}
-                      className="px-4 sm:px-5 py-3.5 rounded-2xl font-bold text-xs sm:text-sm bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 transition-all cursor-pointer flex items-center gap-1"
+                      className="px-3.5 sm:px-4 py-3.5 rounded-2xl font-bold text-xs sm:text-sm bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 transition-all cursor-pointer flex items-center gap-1 shrink-0"
                     >
                       ข้ามคำ ⏩
                     </button>
