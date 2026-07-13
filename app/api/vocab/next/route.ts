@@ -6,14 +6,22 @@ import { getCefrFromNumber } from "@/lib/cefr";
 
 export async function GET(request: NextRequest) {
   try {
-    // 1. Non-blocking fast check for session (< 300ms) to ensure iPad LAN fetch never stalls on auth
+    // 1. Check if user actually has a NextAuth session cookie before running auth() across LAN
+    const hasSessionCookie =
+      request.cookies.has("authjs.session-token") ||
+      request.cookies.has("__Secure-authjs.session-token") ||
+      request.cookies.has("next-auth.session-token") ||
+      request.cookies.has("__Secure-next-auth.session-token");
+
     let userId: string | undefined = undefined;
-    try {
-      const sessionTimeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 300));
-      const session = await Promise.race([auth(), sessionTimeout]);
-      userId = session?.user?.id;
-    } catch (authErr) {
-      console.error("[Fast auth check error]:", authErr);
+    if (hasSessionCookie) {
+      try {
+        const sessionTimeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 300));
+        const session = await Promise.race([auth(), sessionTimeout]);
+        userId = session?.user?.id;
+      } catch (authErr) {
+        console.error("[Fast auth check error]:", authErr);
+      }
     }
     const isGuest = !userId;
 
@@ -27,10 +35,16 @@ export async function GET(request: NextRequest) {
       ? { category }
       : {};
 
+    // Safety timeout wrapper for DB queries to prevent LAN/Postgres hangs
+    const dbTimeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("ฐานข้อมูลใช้เวลานานเกินกำหนด (Timeout)")), 3500)
+    );
+
     // Single fast query for total count
-    const totalCount = await prisma.vocabulary.count({
-      where: whereFilter,
-    });
+    const totalCount: number = await Promise.race([
+      prisma.vocabulary.count({ where: whereFilter }),
+      dbTimeout,
+    ]);
 
     if (totalCount === 0) {
       return NextResponse.json(
@@ -45,15 +59,18 @@ export async function GET(request: NextRequest) {
     if (!isGuest && userId) {
       const now = new Date();
 
-      const dueProgress = await prisma.userProgress.findFirst({
-        where: {
-          userId,
-          nextReview: { lte: now },
-          ...(Object.keys(whereFilter).length > 0 ? { vocabulary: whereFilter } : {}),
-        },
-        orderBy: { nextReview: "asc" },
-        include: { vocabulary: true },
-      });
+      const dueProgress = await Promise.race([
+        prisma.userProgress.findFirst({
+          where: {
+            userId,
+            nextReview: { lte: now },
+            ...(Object.keys(whereFilter).length > 0 ? { vocabulary: whereFilter } : {}),
+          },
+          orderBy: { nextReview: "asc" },
+          include: { vocabulary: true },
+        }),
+        dbTimeout,
+      ]);
 
       if (dueProgress && dueProgress.vocabulary) {
         selectedVocab = dueProgress.vocabulary;
@@ -65,20 +82,26 @@ export async function GET(request: NextRequest) {
           isDueReview: true,
         };
       } else {
-        const existingProgressIds = await prisma.userProgress.findMany({
-          where: { userId },
-          select: { vocabId: true },
-        });
+        const existingProgressIds = await Promise.race([
+          prisma.userProgress.findMany({
+            where: { userId },
+            select: { vocabId: true },
+          }),
+          dbTimeout,
+        ]);
 
-        const excludedIds = existingProgressIds.map((p) => p.vocabId);
+        const excludedIds = existingProgressIds.map((p: any) => p.vocabId);
 
-        selectedVocab = await prisma.vocabulary.findFirst({
-          where: {
-            id: { notIn: excludedIds },
-            ...whereFilter,
-          },
-          orderBy: { id: "asc" },
-        });
+        selectedVocab = await Promise.race([
+          prisma.vocabulary.findFirst({
+            where: {
+              id: { notIn: excludedIds },
+              ...whereFilter,
+            },
+            orderBy: { id: "asc" },
+          }),
+          dbTimeout,
+        ]);
 
         if (selectedVocab) {
           userProgressData = {
@@ -89,14 +112,17 @@ export async function GET(request: NextRequest) {
             isNewWord: true,
           };
         } else {
-          const earliestReview = await prisma.userProgress.findFirst({
-            where: {
-              userId,
-              ...(Object.keys(whereFilter).length > 0 ? { vocabulary: whereFilter } : {}),
-            },
-            orderBy: { nextReview: "asc" },
-            include: { vocabulary: true },
-          });
+          const earliestReview = await Promise.race([
+            prisma.userProgress.findFirst({
+              where: {
+                userId,
+                ...(Object.keys(whereFilter).length > 0 ? { vocabulary: whereFilter } : {}),
+              },
+              orderBy: { nextReview: "asc" },
+              include: { vocabulary: true },
+            }),
+            dbTimeout,
+          ]);
 
           if (earliestReview && earliestReview.vocabulary) {
             selectedVocab = earliestReview.vocabulary;
@@ -115,10 +141,13 @@ export async function GET(request: NextRequest) {
     // Fallback to fast random query for Guest or if no specific user selection found
     if (!selectedVocab) {
       const skip = Math.floor(Math.random() * totalCount);
-      selectedVocab = await prisma.vocabulary.findFirst({
-        where: whereFilter,
-        skip,
-      });
+      selectedVocab = await Promise.race([
+        prisma.vocabulary.findFirst({
+          where: whereFilter,
+          skip,
+        }),
+        dbTimeout,
+      ]);
     }
 
     if (!selectedVocab) {
@@ -130,16 +159,18 @@ export async function GET(request: NextRequest) {
 
     let completedCount = 0;
     if (!isGuest && userId) {
-      completedCount = await prisma.userProgress.count({
-        where: {
-          userId,
-          ...(Object.keys(whereFilter).length > 0 ? { vocabulary: whereFilter } : {}),
-        },
-      });
+      completedCount = await Promise.race([
+        prisma.userProgress.count({
+          where: {
+            userId,
+            ...(Object.keys(whereFilter).length > 0 ? { vocabulary: whereFilter } : {}),
+          },
+        }),
+        dbTimeout,
+      ]);
     }
 
     // 2. INSTANT ZERO-LATENCY AI HANDLING (< 1ms)
-    // If exampleSentence is missing, DO NOT block the request waiting for AI! Return immediately and generate asynchronously in background.
     let exampleSentence = selectedVocab.exampleSentence;
     let exampleTarget = selectedVocab.exampleTarget;
     let wasAiGenerated = false;
@@ -211,7 +242,7 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     console.error("[API Error /api/vocab/next]:", error);
     return NextResponse.json(
-      { error: "ไม่สามารถโหลดคำศัพท์ได้ในขณะนี้: " + error.message },
+      { error: "ไม่สามารถโหลดคำศัพท์ได้ในขณะนี้: " + (error.message || "Unknown error") },
       { status: 500 }
     );
   }
