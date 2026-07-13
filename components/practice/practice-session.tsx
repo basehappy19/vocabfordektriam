@@ -82,14 +82,14 @@ const SYNONYM_PHONETIC_DICTIONARY: Record<string, string> = {
   lessen: "LES-un",
   relieve: "rih-LEEV",
   reduce: "rih-DOOS",
-  soothe: "SOOTH",
+  soothe: "s-OOTH",
   ease: "EEZ",
   diminish: "dih-MIN-ish",
   assuage: "uh-SWAYJ",
 
   // resilient synonyms
-  tough: "TUFF",
-  strong: "STRONG",
+  tough: "t-UFF",
+  strong: "str-AWNG",
   hardy: "HAR-dee",
   flexible: "FLEK-suh-bul",
   durable: "DYOOR-uh-bul",
@@ -107,7 +107,7 @@ const SYNONYM_PHONETIC_DICTIONARY: Record<string, string> = {
 
   // ambiguous synonyms
   unclear: "un-KLEER",
-  vague: "VAYG",
+  vague: "v-AYG",
   equivocal: "ih-KWIV-uh-kul",
   obscure: "ub-SKYOOR",
   uncertain: "un-SER-tun",
@@ -119,18 +119,18 @@ const SYNONYM_PHONETIC_DICTIONARY: Record<string, string> = {
   analyze: "AN-uh-lyze",
   "study carefully": "STUD-ee KAIR-ful-ee",
   investigate: "in-VES-tuh-gayt",
-  probe: "PROHB",
+  probe: "pr-OHB",
 
   // empathy synonyms
   compassion: "kum-PASH-un",
   understanding: "un-der-STAN-ding",
   sympathy: "SIM-puh-thee",
-  care: "KAIR",
+  care: "k-AIR",
   sensitivity: "sen-sih-TIV-ih-tee",
 
   // collaborate synonyms
   cooperate: "koh-OP-uh-rayt",
-  "team up": "TEEM UP",
+  "team up": "t-EEM UP",
   "join forces": "JOYN FOR-suz",
   "work together": "WERK tuh-GETH-er",
   partner: "PART-ner",
@@ -146,8 +146,8 @@ const SYNONYM_PHONETIC_DICTIONARY: Record<string, string> = {
   delay: "dih-LAY",
   postpone: "pohst-POHN",
   defer: "dih-FER",
-  "put off": "PUT OFF",
-  stall: "STAWL",
+  "put off": "p-UT OFF",
+  stall: "st-AWL",
   dally: "DAL-ee",
 
   // paradigm synonyms
@@ -163,7 +163,7 @@ const SYNONYM_PHONETIC_DICTIONARY: Record<string, string> = {
   certain: "SER-tun",
   ineluctable: "in-ih-LUK-tuh-bul",
   destined: "DES-tind",
-  sure: "SHOOR",
+  sure: "sh-OOR",
 };
 
 function getPhoneticForWord(word: string, vocab?: VocabData | null): string {
@@ -503,7 +503,7 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
   const displaySynonyms =
     isTypedCorrectAndDifferent && vocab
       ? [
-          `${vocab.word}${vocab.phonetic ? ` (/${vocab.phonetic}/)` : ""}`,
+          vocab.word,
           ...(vocab.synonyms || []).filter((s) => s.toLowerCase() !== cleanTyped),
         ]
       : vocab?.synonyms || [];
@@ -734,7 +734,7 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                       <p className="text-lg sm:text-xl font-bold text-slate-800">{vocab.meaning}</p>
                       {displaySynonyms && displaySynonyms.length > 0 && (
                         <p className="text-xs sm:text-sm text-indigo-600 font-medium mt-1">
-                          🔗 คำพ้องความหมาย: {displaySynonyms.join(", ")}
+                          คำพ้องความหมาย: {displaySynonyms.join(", ")}
                         </p>
                       )}
                     </div>
@@ -964,7 +964,7 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                       <p className="text-lg sm:text-xl font-bold text-slate-800">{vocab.meaning}</p>
                       {displaySynonyms && displaySynonyms.length > 0 && (
                         <p className="text-xs sm:text-sm text-indigo-600 font-medium mt-1">
-                          🔗 คำพ้องความหมาย: {displaySynonyms.join(", ")}
+                          คำพ้องความหมาย: {displaySynonyms.join(", ")}
                         </p>
                       )}
                     </div>
