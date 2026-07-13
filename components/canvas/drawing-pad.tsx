@@ -5,87 +5,91 @@ import React, { useRef, useState, useEffect, useCallback } from "react";
 interface DrawingPadProps {
   wordToPractice?: string;
   showGuidelineWord?: boolean;
-  onClear?: () => void;
   className?: string;
+}
+
+interface Stroke {
+  points: { x: number; y: number }[];
+  color: string;
+  width: number;
 }
 
 export default function DrawingPad({
   wordToPractice = "",
   showGuidelineWord = false,
-  onClear,
   className = "",
 }: DrawingPadProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [strokeColor, setStrokeColor] = useState("#4f46e5"); // Indigo-600 default
-  const [lineWidth, setLineWidth] = useState(6);
+  const [strokeColor, setStrokeColor] = useState("#4f46e5"); // Indigo default
+  const [strokeWidth, setStrokeWidth] = useState(4); // Clean smooth stroke
   const [hasDrawn, setHasDrawn] = useState(false);
-  const [history, setHistory] = useState<ImageData[]>([]);
 
-  // Initialize canvas and resize observer for crisp Retina/iPad display without blurriness
-  const setupCanvas = useCallback(() => {
+  // History stack for Undo capability
+  const [history, setHistory] = useState<ImageData[]>([]);
+  const currentPointsRef = useRef<{ x: number; y: number }[]>([]);
+
+  // Initialize and resize canvas with crisp Retina display ratio
+  const initCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     const rect = canvas.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
 
-    // Save existing drawing if resizing
-    let existingData: ImageData | null = null;
+    // Save previous drawing state if any
+    let prevImage: ImageData | null = null;
     if (canvas.width > 0 && canvas.height > 0) {
       try {
-        existingData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        prevImage = ctx.getImageData(0, 0, canvas.width, canvas.height);
       } catch (e) {
-        // Ignore CORS issues if any
+        // Ignore cross-origin canvas errors if any
       }
     }
 
     canvas.width = rect.width * dpr;
     canvas.height = rect.height * dpr;
-
     ctx.scale(dpr, dpr);
+
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.strokeStyle = strokeColor;
-    ctx.lineWidth = lineWidth;
+    ctx.lineWidth = strokeWidth;
 
-    if (existingData) {
-      ctx.putImageData(existingData, 0, 0);
-    } else {
-      // Clear with transparent or subtle background
-      ctx.clearRect(0, 0, rect.width, rect.height);
+    if (prevImage) {
+      ctx.putImageData(prevImage, 0, 0);
     }
-  }, [strokeColor, lineWidth]);
+  }, [strokeColor, strokeWidth]);
 
   useEffect(() => {
-    setupCanvas();
-    window.addEventListener("resize", setupCanvas);
-    return () => window.removeEventListener("resize", setupCanvas);
-  }, [setupCanvas]);
+    initCanvas();
+    const handleResize = () => initCanvas();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [initCanvas]);
 
-  // Update stroke styles on change
+  // Update stroke style when color/width change
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     ctx.strokeStyle = strokeColor;
-    ctx.lineWidth = lineWidth;
-  }, [strokeColor, lineWidth]);
+    ctx.lineWidth = strokeWidth;
+  }, [strokeColor, strokeWidth]);
 
-  const saveToHistory = () => {
+  const saveToHistory = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    setHistory((prev) => [...prev.slice(-10), data]); // Keep last 10 states for undo
-  };
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    setHistory((prev) => [...prev.slice(-15), imageData]); // Keep last 15 steps
+  }, []);
 
-  const getPointerPos = (e: React.PointerEvent<HTMLCanvasElement>) => {
+  const getCoordinates = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
@@ -96,63 +100,57 @@ export default function DrawingPad({
   };
 
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    e.preventDefault();
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Capture pointer specifically for Apple Pencil high frequency polling
-    canvas.setPointerCapture(e.pointerId);
+    // Capture Apple Pencil / touch pressure if available
+    if (e.pressure > 0 && e.pointerType === "pen") {
+      ctx.lineWidth = Math.max(2, strokeWidth * (e.pressure * 1.5));
+    } else {
+      ctx.lineWidth = strokeWidth;
+    }
 
+    canvas.setPointerCapture(e.pointerId);
     saveToHistory();
+
+    const { x, y } = getCoordinates(e);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+
     setIsDrawing(true);
     setHasDrawn(true);
-
-    const pos = getPointerPos(e);
-    ctx.beginPath();
-    ctx.moveTo(pos.x, pos.y);
-
-    // Apply pressure sensitivity if available (Apple Pencil returns e.pressure from 0.0 to 1.0)
-    if (e.pointerType === "pen" && e.pressure > 0) {
-      ctx.lineWidth = Math.max(3, lineWidth * (e.pressure * 1.5));
-    }
+    currentPointsRef.current = [{ x, y }];
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!isDrawing) return;
-    e.preventDefault();
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Handle high frequency Apple Pencil events if getCoalescedEvents is supported
-    const events =
-      typeof e.nativeEvent.getCoalescedEvents === "function"
-        ? e.nativeEvent.getCoalescedEvents()
-        : [e.nativeEvent];
-
-    for (const event of events) {
-      const rect = canvas.getBoundingClientRect();
-      const x = event.clientX - rect.left;
-      const y = event.clientY - rect.top;
-
-      if (event.pointerType === "pen" && event.pressure > 0) {
-        ctx.lineWidth = Math.max(3, lineWidth * (event.pressure * 1.5));
-      }
-      ctx.lineTo(x, y);
-      ctx.stroke();
+    // Adjust line width dynamically for Apple Pencil pressure
+    if (e.pressure > 0 && e.pointerType === "pen") {
+      ctx.lineWidth = Math.max(2, strokeWidth * (e.pressure * 1.5));
     }
+
+    const { x, y } = getCoordinates(e);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    currentPointsRef.current.push({ x, y });
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    e.preventDefault();
+    if (!isDrawing) return;
+    setIsDrawing(false);
     const canvas = canvasRef.current;
-    if (canvas && canvas.hasPointerCapture(e.pointerId)) {
+    if (canvas) {
       canvas.releasePointerCapture(e.pointerId);
     }
-    setIsDrawing(false);
   };
 
   const handleClear = () => {
@@ -160,11 +158,11 @@ export default function DrawingPad({
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+
     saveToHistory();
-    const rect = canvas.getBoundingClientRect();
-    ctx.clearRect(0, 0, rect.width, rect.height);
+    const dpr = window.devicePixelRatio || 1;
+    ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
     setHasDrawn(false);
-    if (onClear) onClear();
   };
 
   const handleUndo = () => {
@@ -180,18 +178,18 @@ export default function DrawingPad({
   };
 
   return (
-    <div className={`flex-1 w-full flex flex-col ${className || ""}`}>
-      {/* iPad Apple Pencil Massive Full-Screen Grid Canvas Area with Floating GoodNotes Toolbar */}
+    <div className={`absolute inset-0 w-full h-full overflow-hidden ${className || ""}`}>
+      {/* 100% Full Screen Grid Canvas Area ("ให้กระดานเขียนเต็มจอเลย ที่เหลือลอยทับไปเลย") */}
       <div
-        className="relative w-full min-h-[580px] sm:min-h-[680px] md:min-h-[760px] flex-1 rounded-3xl border-2 border-slate-300 overflow-hidden shadow-inner transition-all flex flex-col"
+        className="absolute inset-0 w-full h-full overflow-hidden select-none"
         style={{
           backgroundColor: "#ffffff",
           backgroundImage: `linear-gradient(to right, #e2e8f0 1px, transparent 1px), linear-gradient(to bottom, #e2e8f0 1px, transparent 1px)`,
           backgroundSize: "32px 32px",
         }}
       >
-        {/* Floating GoodNotes-style Toolbar inside top-right of canvas */}
-        <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 flex items-center gap-1.5 sm:gap-2 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-slate-200/80 shadow-md">
+        {/* Floating GoodNotes-style Toolbar inside top-right of screen ("เครื่องมือสีต่าง ๆ ลอยคล้าย ๆ Goodnote") */}
+        <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 pointer-events-auto flex items-center gap-1.5 sm:gap-2 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-slate-200/80 shadow-md">
           <span className="text-[11px] font-bold text-slate-500 hidden sm:inline mr-1">
             🎨 สีปากกา:
           </span>
@@ -236,6 +234,7 @@ export default function DrawingPad({
             🗑️ ล้างกระดาน
           </button>
         </div>
+
         {/* Subtle Watermark Guideline (Only when showGuidelineWord is true) */}
         {!hasDrawn && wordToPractice && showGuidelineWord && (
           <div
@@ -251,11 +250,11 @@ export default function DrawingPad({
         {/* Clean iPad handwriting guidance watermark/lines when blank */}
         {!hasDrawn && (
           <div
-            className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none opacity-20 text-center px-6"
+            className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none opacity-25 text-center px-6"
             aria-hidden="true"
           >
-            <span className="text-sm sm:text-base font-semibold text-slate-400 border-b border-dashed border-slate-300 pb-1">
-              ✍️ พื้นที่สำหรับเขียนคำศัพท์ด้วย Apple Pencil (หรือนิ้วมือ)
+            <span className="text-sm sm:text-base font-semibold text-slate-400 border-b border-dashed border-slate-300 pb-1.5">
+              ✍️ พื้นที่กระดานเขียนคำศัพท์เต็มหน้าจอด้วย Apple Pencil (หรือนิ้วมือ)
             </span>
           </div>
         )}
@@ -269,7 +268,7 @@ export default function DrawingPad({
           onPointerLeave={handlePointerUp}
           aria-label={`กระดานคัดเขียนคำศัพท์ภาษาอังกฤษสำหรับ Apple Pencil (iPad Drawing Canvas for word: ${wordToPractice})`}
           role="img"
-          className="w-full h-full cursor-crosshair focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-3xl"
+          className="absolute inset-0 w-full h-full cursor-crosshair focus:outline-none z-10"
           style={{ touchAction: "none" }} // CRITICAL: Prevents iPad Safari page scrolling/zooming when drawing with Apple Pencil
           tabIndex={0}
         />
