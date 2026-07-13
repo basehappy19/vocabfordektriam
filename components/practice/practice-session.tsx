@@ -11,6 +11,7 @@ interface VocabData {
   id: string;
   word: string;
   meaning: string;
+  synonyms?: string[];
   partOfSpeech: string;
   category: string;
   difficultyLevel: number;
@@ -23,17 +24,18 @@ interface VocabData {
     wasAiGenerated?: boolean;
     servedFromDbDirectly?: boolean;
     userProgress?: {
-      boxLevel: number;
-      nextReview?: string;
-      reviewCount: number;
-      streak: number;
+      boxLevel?: number;
+      nextReview?: string | Date;
+      reviewCount?: number;
+      streak?: number;
       isDueReview?: boolean;
       isNewWord?: boolean;
+      isEarlyPractice?: boolean;
     };
   };
 }
 
-interface PracticeSessionProps {
+export interface PracticeSessionProps {
   initialCategory?: string;
 }
 
@@ -63,9 +65,10 @@ function checkIsCorrectAnswer(typed: string, vocab: VocabData, direction: "TH_TO
     // 1. Exact match
     if (cleanTyped === mainWord) return true;
 
-    // 2. Check known synonyms dictionary
-    const synonyms = SYNONYM_DICTIONARY[mainWord] || [];
-    if (synonyms.includes(cleanTyped)) return true;
+    // 2. Check DB synonyms array AND dictionary
+    const dbSynonyms = (vocab.synonyms || []).map((s) => s.trim().toLowerCase());
+    const dictSynonyms = SYNONYM_DICTIONARY[mainWord] || [];
+    if (dbSynonyms.includes(cleanTyped) || dictSynonyms.includes(cleanTyped)) return true;
 
     // 3. Check if typed is inside slash/comma variants if vocab.word has multiple spellings
     const wordParts = mainWord.split(/[,/]/).map((w) => w.trim());

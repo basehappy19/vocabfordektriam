@@ -35,7 +35,9 @@ export default async function CollectionPage({ params }: PageProps) {
       where: {
         userId,
         vocabulary: {
-          collectionId: id,
+          collections: {
+            some: { id },
+          },
         },
       },
       select: {

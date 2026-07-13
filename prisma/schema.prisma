@@ -49,6 +49,7 @@ model User {
   id            String    @id @default(cuid())
   name          String?
   email         String?   @unique
+  password      String?   @map("password")
   emailVerified DateTime? @map("email_verified")
   image         String?
   role          UserRole  @default(STUDENT)
@@ -85,22 +86,24 @@ enum UserRole {
 // ==========================================
 
 model Collection {
-  id          String       @id // e.g., "col-tgat-1"
-  title       String       @db.VarChar(200) // e.g., "TGAT Set 1: Essential Adjectives & Verbs"
-  description String       @db.Text
-  category    String       @db.VarChar(100) // e.g., "TGAT-Eng"
-  cefrLevel   String       @default("B2") @map("cefr_level") @db.VarChar(20)
-  icon        String       @default("📘") @db.VarChar(20)
-  color       String       @default("from-blue-500/10 to-indigo-500/10 border-blue-200/80 hover:border-blue-400") @db.VarChar(200)
-  badge       String       @default("TGAT Set 1") @db.VarChar(100)
-  badgeColor  String       @default("bg-blue-50 text-blue-700 border-blue-200") @db.VarChar(100)
-  createdAt   DateTime     @default(now()) @map("created_at")
-  updatedAt   DateTime     @updatedAt @map("updated_at")
+  id            String       @id // e.g., "tgat1-68"
+  title         String       @db.VarChar(200) // e.g., "TGAT1 ปี 68 (ข้อสอบจริงล่าสุด)"
+  description   String       @db.Text
+  category      String       @db.VarChar(100) // "TGAT1" or "A-Level"
+  cefrLevel     String       @default("B2") @map("cefr_level") @db.VarChar(20)
+  icon          String       @default("📘") @db.VarChar(20)
+  color         String       @default("from-blue-500/10 to-indigo-500/10 border-blue-200/80 hover:border-blue-400") @db.VarChar(200)
+  badge         String       @default("TGAT1 68") @db.VarChar(100)
+  badgeColor    String       @default("bg-blue-50 text-blue-700 border-blue-200") @db.VarChar(100)
+  isRecommended Boolean      @default(false) @map("is_recommended")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
 
-  // Relations
-  vocabulary  Vocabulary[]
+  // Many-to-many relation with Vocabulary
+  vocabulary    Vocabulary[] @relation("CollectionToVocabulary")
 
   @@index([category])
+  @@index([isRecommended])
   @@map("collections")
 }
 
@@ -108,11 +111,12 @@ model Vocabulary {
   id              String   @id @default(cuid())
   word            String   @unique @db.VarChar(100)
   meaning         String   @db.Text
+  synonyms        String[] @default([]) @map("synonyms")
   partOfSpeech    String   @map("part_of_speech") @db.VarChar(50) // e.g., Noun, Verb, Adjective, Idiom
-  category        String   @db.VarChar(100) // e.g., TGAT-Eng, A-Level, TCAS Core, Academic
+  category        String   @db.VarChar(100) // e.g., TGAT1, A-Level
   
-  collectionId    String?  @map("collection_id")
-  collection      Collection? @relation(fields: [collectionId], references: [id], onDelete: SetNull)
+  // Many-to-many relation with Collections
+  collections     Collection[] @relation("CollectionToVocabulary")
 
   // Cost-Saving AI Integration: Lazy-Generated Example Sentence & Target Translation
   // When null, generated on first encounter via AI SDK and saved immediately.
@@ -129,7 +133,6 @@ model Vocabulary {
   userProgress    UserProgress[]
 
   @@index([category])
-  @@index([collectionId])
   @@index([difficultyLevel])
   @@map("vocabulary")
 }

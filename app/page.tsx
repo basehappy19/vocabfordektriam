@@ -3,6 +3,7 @@ import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import CollectionCard from "@/components/collection/collection-card";
+import { AuthNavButtons } from "@/components/auth/auth-buttons";
 
 export default async function Home() {
   const session = await auth();
@@ -16,7 +17,7 @@ export default async function Home() {
         select: { vocabulary: true },
       },
     },
-    orderBy: { id: "asc" },
+    orderBy: { id: "desc" }, // Show latest years (68 -> 67 -> 66) first
   });
 
   // Calculate DB progress per collection if logged in
@@ -26,41 +27,39 @@ export default async function Home() {
       where: { userId: user.id },
       include: {
         vocabulary: {
-          select: { collectionId: true },
+          select: {
+            collections: {
+              select: { id: true },
+            },
+          },
         },
       },
     });
     userProgress.forEach((p) => {
-      if (p.vocabulary?.collectionId) {
-        dbProgressMap[p.vocabulary.collectionId] = (dbProgressMap[p.vocabulary.collectionId] || 0) + 1;
-      }
+      p.vocabulary?.collections.forEach((col) => {
+        dbProgressMap[col.id] = (dbProgressMap[col.id] || 0) + 1;
+      });
     });
   }
 
+  const recommendedCollections = collections.filter((c) => c.isRecommended);
+
   const categories = [
     {
-      id: "TGAT-Eng",
-      title: "📘 หมวดหมู่ TGAT English Core (การสื่อสารและคำศัพท์หลัก)",
-      description: "รวมชุดฝึก (Collections) สำหรับเตรียมสอบ TGAT 1 ความสามารถในการสื่อสารภาษาอังกฤษและการใช้คำศัพท์ในชีวิตประจำวัน",
-      badgeText: "TGAT 1",
+      id: "TGAT1",
+      title: "📘 TGAT 1 ความสามารถในการสื่อสารภาษาอังกฤษ (ปี 2566-2568)",
+      description: "คลังข้อสอบจริงและชุดคำศัพท์สำหรับการสื่อสารรอบด้าน (Vocabulary & Everyday Communication)",
+      badgeText: "TGAT 1 Core",
       badgeColor: "bg-blue-50 text-blue-700 border-blue-200",
       buttonColor: "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20",
     },
     {
       id: "A-Level",
-      title: "📙 หมวดหมู่ A-Level 82 Vocabulary (วิเคราะห์โจทย์และบทความยาก)",
-      description: "รวมชุดฝึกคำศัพท์ระดับสูง (CEFR B2-C2) สำหรับโจทย์ Reading Comprehension & Academic Passages ในข้อสอบ A-Level 82",
+      title: "📙 A-Level 82 ภาษาอังกฤษ (ปี 2566-2568)",
+      description: "เจาะลึกคำศัพท์ยากระดับ B2-C2 สำหรับวิเคราะห์บทความวิชาการ (Academic & Reading Comprehension)",
       badgeText: "A-Level 82",
       badgeColor: "bg-purple-50 text-purple-700 border-purple-200",
       buttonColor: "bg-purple-600 hover:bg-purple-700 text-white shadow-purple-500/20",
-    },
-    {
-      id: "TCAS-Academic",
-      title: "📗 หมวดหมู่ TCAS Academic Core (คำเชื่อมและศัพท์ทางการ)",
-      description: "รวมชุดฝึกคำเชื่อม (Transitions/Connectors) และคำศัพท์ทางการสำหรับความเรียงระดับมหาวิทยาลัยและข้อสอบยาก",
-      badgeText: "Academic Core",
-      badgeColor: "bg-emerald-50 text-emerald-700 border-emerald-200",
-      buttonColor: "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/20",
     },
   ];
 
@@ -74,23 +73,11 @@ export default async function Home() {
               <span>VocabForDekTriam</span> <span className="text-lg">✍️</span>
             </Link>
             <span className="hidden md:inline-block px-3 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200/60 rounded-full text-xs font-bold uppercase tracking-wide">
-              🎯 TCAS 2026 Collections System
+              🎯 TCAS 67-68 Collections
             </span>
           </div>
 
-          <div className="flex items-center gap-2.5 text-xs font-semibold">
-            {!isGuest ? (
-              <span className="px-3.5 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200/60 rounded-xl flex items-center gap-1.5 shadow-2xs font-bold">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span>บันทึกคลาวด์ ({user?.name || "Student"})</span>
-              </span>
-            ) : (
-              <span className="px-3.5 py-1.5 bg-amber-50 text-amber-800 border border-amber-200/80 rounded-xl flex items-center gap-1.5 shadow-2xs font-bold">
-                <span className="w-2 h-2 rounded-full bg-amber-500" />
-                <span>บันทึก LocalStorage (Guest Mode)</span>
-              </span>
-            )}
-          </div>
+          <AuthNavButtons user={user} />
         </nav>
       </header>
 
@@ -98,26 +85,79 @@ export default async function Home() {
       <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-8 flex flex-col gap-12 items-center">
         <div className="text-center max-w-2xl flex flex-col gap-3 pt-2">
           <span className="inline-block px-3.5 py-1 bg-indigo-100/80 text-indigo-800 rounded-full text-xs sm:text-sm font-bold tracking-wide border border-indigo-200 mx-auto shadow-2xs">
-            📚 ระบบ Collection คำศัพท์แยกหมวดหมู่สำหรับ Apple Pencil & iPad
+            📚 ตะลุยโจทย์คำศัพท์ TGAT 1 และ A-Level ตามปีข้อสอบจริง
           </span>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-slate-900 leading-tight">
-            เลือกคลังข้อสอบตามหมวดหมู่ <br className="hidden sm:inline" />
-            <span className="text-indigo-600">หรือฝึกคัดศัพท์ในชุด Collection</span>
+            คลังคำศัพท์ข้อสอบจริง <br className="hidden sm:inline" />
+            <span className="text-indigo-600">พร้อมระบบเฉลยพ้องความหมาย (Synonyms)</span>
           </h2>
           <p className="text-sm sm:text-base text-slate-600 leading-relaxed max-w-xl mx-auto">
-            สามารถกดดูรายการคำศัพท์ในแต่ละ Collection ก่อนฝึกได้ หรือคลิกที่ปุ่มประจำหมวดหมู่เพื่อสุ่มฝึกทุกคำในหมวดนั้น พร้อมบันทึกความคืบหน้าเรียลไทม์
+            เลือกฝึกตามปีข้อสอบที่ต้องการหรือสุ่มทั้งหมวดหมู่ รองรับการเขียนเต็มจอด้วย Apple Pencil และการตรวจคำตอบอัตโนมัติที่ให้คะแนนแม้ออกเสียงหรือตอบความหมายใกล้เคียง
           </p>
         </div>
 
-        {/* Categories and Collections Sections */}
+        {/* 🌟 Recommended Collections Showcase Section */}
+        {recommendedCollections.length > 0 && (
+          <section className="w-full bg-gradient-to-br from-amber-500/10 via-indigo-500/5 to-purple-500/10 p-6 sm:p-8 rounded-3xl border-2 border-amber-300/80 shadow-md flex flex-col gap-6">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-2.5">
+                <span className="text-2xl p-2 bg-amber-100 text-amber-800 rounded-2xl border border-amber-300">
+                  🌟
+                </span>
+                <div>
+                  <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                    แนะนำ Collection สำหรับคุณ (Featured & Latest Exams)
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-600 font-medium mt-0.5">
+                    ชุดคำศัพท์ที่ออกสอบล่าสุดและมีความสำคัญสูงสุด แนะนำให้เริ่มฝึกคัดจากคอลเลกชันเหล่านี้ก่อน
+                  </p>
+                </div>
+              </div>
+              <span className="px-3 py-1 bg-amber-500 text-white text-xs font-black rounded-full uppercase tracking-wider shadow-2xs animate-pulse">
+                🔥 Hot Pick
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              {recommendedCollections.map((col) => (
+                <CollectionCard
+                  key={col.id}
+                  collection={{
+                    id: col.id,
+                    title: col.title,
+                    description: col.description,
+                    category: col.category,
+                    cefrLevel: col.cefrLevel,
+                    icon: col.icon,
+                    color: "from-white to-amber-50/50 border-amber-200 hover:border-amber-400 shadow-sm",
+                    badge: col.badge,
+                    badgeColor: "bg-amber-100 text-amber-900 border-amber-300",
+                    totalWordsCount: col._count.vocabulary,
+                  }}
+                  isGuest={isGuest}
+                  dbCompletedCount={dbProgressMap[col.id] || 0}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Major Categories: TGAT1 & A-Level */}
         <div className="w-full flex flex-col gap-10">
+          <div className="flex items-center gap-2 px-2">
+            <span className="text-2xl">📚</span>
+            <h3 className="text-2xl font-black tracking-tight text-slate-900">
+              เลือก Collection ตามหมวดหมู่ใหญ่และปีข้อสอบ (TGAT1 / A-Level)
+            </h3>
+          </div>
+
           {categories.map((cat) => {
             const catCollections = collections.filter((c) => c.category === cat.id);
 
             return (
               <section
                 key={cat.id}
-                className="bg-white/80 backdrop-blur-sm p-6 sm:p-8 rounded-3xl border border-slate-200/80 shadow-sm flex flex-col gap-6"
+                className="bg-white/85 backdrop-blur-sm p-6 sm:p-8 rounded-3xl border border-slate-200/80 shadow-sm flex flex-col gap-6"
               >
                 {/* Category Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/60">
@@ -126,13 +166,10 @@ export default async function Home() {
                       <span className={`px-2.5 py-0.5 rounded-full text-xs font-black border ${cat.badgeColor}`}>
                         {cat.badgeText}
                       </span>
-                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                        Category ID: {cat.id}
-                      </span>
                     </div>
-                    <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                    <h4 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight mt-1">
                       {cat.title}
-                    </h3>
+                    </h4>
                     <p className="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed">
                       {cat.description}
                     </p>
@@ -141,9 +178,9 @@ export default async function Home() {
                   {/* Category Practice CTA Button */}
                   <Link
                     href={`/practice?category=${cat.id}`}
-                    className={`shrink-0 px-5 py-3 rounded-2xl font-extrabold text-sm shadow-md transition-all flex items-center justify-center gap-2 ${cat.buttonColor} active:scale-98`}
+                    className={`shrink-0 px-5 py-3.5 rounded-2xl font-extrabold text-sm shadow-md transition-all flex items-center justify-center gap-2 ${cat.buttonColor} active:scale-98`}
                   >
-                    <span>🎯 ฝึกสุ่มทุกคำในหมวดหมู่ {cat.id}</span>
+                    <span>🎯 ฝึกสุ่มทุกคำใน {cat.id}</span>
                     <span>➡️</span>
                   </Link>
                 </div>
@@ -154,7 +191,7 @@ export default async function Home() {
                     ยังไม่มี Collection ในหมวดหมู่นี้
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                     {catCollections.map((col) => (
                       <CollectionCard
                         key={col.id}
@@ -181,27 +218,27 @@ export default async function Home() {
           })}
 
           {/* Random All Challenge Section */}
-          <section className="p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-amber-500/10 to-orange-500/10 bg-white border-2 border-amber-200/80 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-6">
+          <section className="p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-indigo-600 to-violet-700 text-white shadow-xl flex flex-col sm:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-4">
-              <span className="text-4xl p-3 bg-white/95 rounded-2xl shadow-2xs border border-slate-100">
+              <span className="text-4xl p-3 bg-white/10 rounded-2xl border border-white/20 backdrop-blur-md">
                 ⚡
               </span>
               <div>
-                <span className="px-3 py-0.5 rounded-full text-xs font-extrabold bg-amber-100 text-amber-800 border border-amber-300">
-                  Challenge Mode
+                <span className="px-3 py-0.5 rounded-full text-xs font-extrabold bg-white/20 text-white border border-white/30">
+                  Ultimate Challenge Mode
                 </span>
-                <h3 className="text-xl sm:text-2xl font-black text-slate-900 mt-1">
-                  🎯 สุ่มทุกคลังคำศัพท์รวม (All Categories Challenge)
+                <h3 className="text-xl sm:text-2xl font-black text-white mt-1">
+                  🎯 สุ่มทุกคลังข้อสอบรวม (All Collections & Years Challenge)
                 </h3>
-                <p className="text-xs sm:text-sm text-slate-600 font-medium mt-1">
-                  ท้าทายความจำขั้นสุดโดยสุ่มคำศัพท์จากทุกหมวดหมู่ (TGAT + A-Level + TCAS Core) แบบไร้ขีดจำกัด
+                <p className="text-xs sm:text-sm text-indigo-100 font-medium mt-1 max-w-lg">
+                  ท้าทายความจำขั้นสุดโดยสุ่มคำศัพท์จากทุกคอลเลกชัน TGAT 1 และ A-Level 66-68 รวมกันแบบไร้ขีดจำกัด
                 </p>
               </div>
             </div>
 
             <Link
               href="/practice?category=all"
-              className="w-full sm:w-auto shrink-0 px-6 py-3.5 bg-amber-600 hover:bg-amber-700 text-white font-black text-sm rounded-2xl shadow-lg shadow-amber-600/25 transition-all flex items-center justify-center gap-2"
+              className="w-full sm:w-auto shrink-0 px-6 py-3.5 bg-white hover:bg-slate-100 text-indigo-900 font-black text-sm rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 active:scale-98"
             >
               <span>🔥 เริ่มสุ่มทุกคำเลย</span>
               <span>➡️</span>

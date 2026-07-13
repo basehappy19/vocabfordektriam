@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     const collectionId = searchParams.get("collectionId");
 
     const whereFilter: any = collectionId
-      ? { collectionId }
+      ? { collections: { some: { id: collectionId } } }
       : category && category !== "all"
       ? { category }
       : {};
@@ -164,9 +164,10 @@ export async function GET(request: NextRequest) {
         id: selectedVocab.id,
         word: selectedVocab.word,
         meaning: selectedVocab.meaning,
+        synonyms: selectedVocab.synonyms || [],
         partOfSpeech: selectedVocab.partOfSpeech,
         category: selectedVocab.category,
-        collectionId: selectedVocab.collectionId || null,
+        collectionId: collectionId || null,
         difficultyLevel: selectedVocab.difficultyLevel,
         cefrLevel: selectedVocab.cefrLevel || getCefrFromNumber(selectedVocab.difficultyLevel),
         phonetic: selectedVocab.phonetic,
