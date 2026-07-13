@@ -199,16 +199,28 @@ function checkIsCorrectAnswer(typed: string, vocab: VocabData, direction: "TH_TO
     return false;
   } else {
     const cleanMeaning = vocab.meaning.trim();
-    if (cleanMeaning === typed.trim()) return true;
+    const cleanTyped = typed.trim();
+    if (cleanMeaning === cleanTyped) return true;
 
+    // Split meaning by common delimiters (, / () | หรือ ;)
     const meaningTokens = cleanMeaning
-      .split(/[,/()]/)
-      .map((m) => m.trim())
+      .split(/[,/()|;]/)
+      .map((m) => m.replace(/^หรือ\s+/g, "").trim())
       .filter((m) => m.length >= 2);
 
     for (const token of meaningTokens) {
-      if (typed.trim() === token || token.includes(typed.trim()) || typed.trim().includes(token)) {
-        if (typed.trim().length >= 3) return true;
+      // 1. Exact match with any token in the meaning list
+      if (cleanTyped === token) return true;
+
+      // 2. Ignore spaces when comparing Thai words (e.g. "เข้มแข็ง อดทน" vs "เข้มแข็งอดทน")
+      const tokenNoSpaces = token.replace(/\s+/g, "");
+      const typedNoSpaces = cleanTyped.replace(/\s+/g, "");
+      if (typedNoSpaces === tokenNoSpaces && tokenNoSpaces.length >= 2) return true;
+
+      // 3. If the user typed the ENTIRE token plus extra descriptive words (e.g. typed "มีความอดทนสูง" where token is "มีความอดทน")
+      // We ONLY allow this if the token is complete (>= 4 chars) and the typed input explicitly CONTAINS the full token!
+      if (tokenNoSpaces.length >= 4 && typedNoSpaces.includes(tokenNoSpaces)) {
+        return true;
       }
     }
 
