@@ -6,6 +6,7 @@ interface DrawingPadProps {
   wordToPractice?: string;
   showGuidelineWord?: boolean;
   className?: string;
+  onDrawStateChange?: (hasDrawn: boolean) => void;
 }
 
 interface Stroke {
@@ -18,12 +19,18 @@ export default function DrawingPad({
   wordToPractice = "",
   showGuidelineWord = false,
   className = "",
+  onDrawStateChange,
 }: DrawingPadProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [strokeColor, setStrokeColor] = useState("#4f46e5"); // Indigo default
   const [strokeWidth, setStrokeWidth] = useState(4); // Clean smooth stroke
   const [hasDrawn, setHasDrawn] = useState(false);
+
+  const updateHasDrawn = useCallback((val: boolean) => {
+    setHasDrawn(val);
+    onDrawStateChange?.(val);
+  }, [onDrawStateChange]);
 
   // History stack for Undo capability
   const [history, setHistory] = useState<ImageData[]>([]);
@@ -122,7 +129,7 @@ export default function DrawingPad({
     ctx.stroke();
 
     setIsDrawing(true);
-    setHasDrawn(true);
+    updateHasDrawn(true);
     currentPointsRef.current = [{ x, y }];
   };
 
@@ -162,7 +169,7 @@ export default function DrawingPad({
     saveToHistory();
     const dpr = window.devicePixelRatio || 1;
     ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
-    setHasDrawn(false);
+    updateHasDrawn(false);
   };
 
   const handleUndo = () => {
@@ -175,6 +182,9 @@ export default function DrawingPad({
     const lastState = history[history.length - 1];
     ctx.putImageData(lastState, 0, 0);
     setHistory((prev) => prev.slice(0, -1));
+    if (history.length <= 1) {
+      updateHasDrawn(false);
+    }
   };
 
   return (

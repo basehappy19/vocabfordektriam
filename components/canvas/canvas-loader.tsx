@@ -52,6 +52,7 @@ interface CanvasLoaderProps {
   showGuidelineWord?: boolean;
   onClear?: () => void;
   className?: string;
+  onDrawStateChange?: (hasDrawn: boolean) => void;
 }
 
 export default function CanvasLoader(props: CanvasLoaderProps) {
