@@ -12,6 +12,13 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const category = searchParams.get("category");
+    const collectionId = searchParams.get("collectionId");
+
+    const whereFilter: any = collectionId
+      ? { collectionId }
+      : category && category !== "all"
+      ? { category }
+      : {};
 
     let selectedVocab: any = null;
     let userProgressData: any = null;
@@ -27,7 +34,7 @@ export async function GET(request: NextRequest) {
         where: {
           userId,
           nextReview: { lte: now },
-          ...(category ? { vocabulary: { category } } : {}),
+          ...(Object.keys(whereFilter).length > 0 ? { vocabulary: whereFilter } : {}),
         },
         orderBy: { nextReview: "asc" },
         include: { vocabulary: true },
@@ -54,7 +61,7 @@ export async function GET(request: NextRequest) {
         selectedVocab = await prisma.vocabulary.findFirst({
           where: {
             id: { notIn: excludedIds },
-            ...(category ? { category } : {}),
+            ...whereFilter,
           },
           orderBy: { id: "asc" },
         });
@@ -70,7 +77,10 @@ export async function GET(request: NextRequest) {
         } else {
           // If all words have been encountered and none due right now, pick the word with earliest review date
           const earliestReview = await prisma.userProgress.findFirst({
-            where: { userId, ...(category ? { vocabulary: { category } } : {}) },
+            where: {
+              userId,
+              ...(Object.keys(whereFilter).length > 0 ? { vocabulary: whereFilter } : {}),
+            },
             orderBy: { nextReview: "asc" },
             include: { vocabulary: true },
           });
@@ -92,13 +102,13 @@ export async function GET(request: NextRequest) {
       // 2. GUEST USER LOGIC (Random Vocabulary Practice - No Progress Saved)
       // =========================================================================
       const totalCount = await prisma.vocabulary.count({
-        where: category ? { category } : {},
+        where: whereFilter,
       });
 
       if (totalCount > 0) {
         const skip = Math.floor(Math.random() * totalCount);
         selectedVocab = await prisma.vocabulary.findFirst({
-          where: category ? { category } : {},
+          where: whereFilter,
           skip,
         });
       }
@@ -156,6 +166,7 @@ export async function GET(request: NextRequest) {
         meaning: selectedVocab.meaning,
         partOfSpeech: selectedVocab.partOfSpeech,
         category: selectedVocab.category,
+        collectionId: selectedVocab.collectionId || null,
         difficultyLevel: selectedVocab.difficultyLevel,
         cefrLevel: selectedVocab.cefrLevel || getCefrFromNumber(selectedVocab.difficultyLevel),
         phonetic: selectedVocab.phonetic,

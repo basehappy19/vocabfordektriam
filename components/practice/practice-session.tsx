@@ -5,6 +5,7 @@ import Link from "next/link";
 import CanvasLoader from "@/components/canvas/canvas-loader";
 import TTSButton from "@/components/tts/tts-button";
 import { getCefrBadgeProps } from "@/lib/cefr";
+import { recordGuestWordCompletion } from "@/lib/progress";
 
 interface VocabData {
   id: string;
@@ -13,6 +14,7 @@ interface VocabData {
   partOfSpeech: string;
   category: string;
   difficultyLevel: number;
+  collectionId?: string | null;
   cefrLevel?: string;
   phonetic?: string;
   exampleSentence?: string | null;
@@ -103,6 +105,9 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
   const [selectedCategory, setSelectedCategory] = useState<string>(
     initialCategory === "all" ? "" : initialCategory
   );
+  const [selectedCollectionId, setSelectedCollectionId] = useState<string>(() =>
+    typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("collectionId") || "" : ""
+  );
   const [typedInput, setTypedInput] = useState("");
 
   const fetchNextVocab = useCallback(async () => {
@@ -112,9 +117,12 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
     setTypedInput("");
 
     try {
-      const url = selectedCategory
-        ? `/api/vocab/next?category=${encodeURIComponent(selectedCategory)}`
-        : `/api/vocab/next`;
+      let url = `/api/vocab/next`;
+      if (selectedCollectionId) {
+        url += `?collectionId=${encodeURIComponent(selectedCollectionId)}`;
+      } else if (selectedCategory) {
+        url += `?category=${encodeURIComponent(selectedCategory)}`;
+      }
 
       const res = await fetch(url);
       if (!res.ok) {
@@ -130,7 +138,7 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
     } finally {
       setLoading(false);
     }
-  }, [selectedCategory]);
+  }, [selectedCategory, selectedCollectionId]);
 
   useEffect(() => {
     fetchNextVocab();
@@ -138,6 +146,7 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
 
   const handleSrsReview = async (rating: "again" | "hard" | "good" | "easy") => {
     if (!vocab) return;
+    recordGuestWordCompletion(vocab.id, vocab.collectionId, vocab.category);
 
     if (mode === "GUEST") {
       fetchNextVocab();
@@ -268,6 +277,7 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                         const val = e.target.value;
                         setTypedInput(val);
                         if (vocab && checkIsCorrectAnswer(val, vocab, practiceDirection)) {
+                          recordGuestWordCompletion(vocab.id, vocab.collectionId, vocab.category);
                           setShowAnswer(true);
                         }
                       }}
