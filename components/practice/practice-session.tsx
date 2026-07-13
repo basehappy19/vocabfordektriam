@@ -443,15 +443,16 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                       </div>
                     )}
                     {answerStatus === "WRONG" && (
-                      <div className="w-full p-4 bg-gradient-to-r from-rose-600 to-red-600 text-white rounded-2xl shadow-lg shadow-rose-600/30 border border-rose-300 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <span className="text-3xl">💡</span>
-                          <div>
-                            <h3 className="text-base sm:text-lg font-black">มาดูเฉลยกันครับ (Review Answer)</h3>
-                            <p className="text-xs text-rose-100 font-medium">ทบทวนความหมายและประโยคตัวอย่างด้านล่างได้เลย</p>
-                          </div>
+                      <div className="w-full p-4 bg-gradient-to-r from-rose-600 to-red-600 text-white rounded-2xl shadow-md shadow-rose-600/25 border border-rose-300 flex items-center gap-3">
+                        <span className="text-3xl">💡</span>
+                        <div>
+                          <h3 className="text-base sm:text-lg font-black">ยังไม่ถูกต้อง</h3>
+                          {typedInput && (
+                            <p className="text-xs text-rose-100 font-medium mt-0.5">
+                              คุณตอบ: &ldquo;{typedInput}&rdquo; • เฉลย: &ldquo;{vocab.word}&rdquo;
+                            </p>
+                          )}
                         </div>
-                        <span className="px-3 py-1 bg-white text-rose-900 text-xs font-black rounded-full uppercase">Review ❌</span>
                       </div>
                     )}
 
@@ -620,17 +621,16 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                       </div>
                     )}
                     {answerStatus === "WRONG" && (
-                      <div className="w-full p-4.5 bg-gradient-to-r from-rose-600 to-red-600 text-white rounded-2xl shadow-lg shadow-rose-600/30 border border-rose-300 flex items-center justify-between">
-                        <div className="flex items-center gap-3.5">
-                          <span className="text-4xl">💡</span>
-                          <div>
-                            <h3 className="text-lg sm:text-xl font-black">ยังไม่ตรงเป๊ะ มาดูเฉลยที่ถูกต้องกันครับ (Incorrect)</h3>
-                            <p className="text-xs sm:text-sm text-rose-100 font-medium">
-                              {typedInput ? `คุณตอบ: "${typedInput}" • เฉลยที่ถูกต้องคือ: "${vocab.word}"` : "ไม่เป็นไร! ทบทวนความหมายและตัวอย่างประโยคด้านล่างได้เลย"}
+                      <div className="w-full p-4.5 bg-gradient-to-r from-rose-600 to-red-600 text-white rounded-2xl shadow-md shadow-rose-600/25 border border-rose-300 flex items-center gap-3.5">
+                        <span className="text-4xl">💡</span>
+                        <div>
+                          <h3 className="text-lg sm:text-xl font-black">ยังไม่ถูกต้อง</h3>
+                          {typedInput && (
+                            <p className="text-xs sm:text-sm text-rose-100 font-medium mt-0.5">
+                              คุณตอบ: &ldquo;{typedInput}&rdquo; • เฉลย: &ldquo;{vocab.word}&rdquo;
                             </p>
-                          </div>
+                          )}
                         </div>
-                        <span className="px-3 py-1 bg-white text-rose-900 text-xs font-black rounded-full uppercase shadow-2xs">Review ❌</span>
                       </div>
                     )}
 

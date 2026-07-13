@@ -81,10 +81,10 @@ export default function TTSButton({
       aria-label={ariaLabelText}
       aria-pressed={isSpeaking}
       title={ariaLabelText}
-      className={`inline-flex items-center justify-center font-medium transition-all duration-200 border shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${sizeClasses} ${
+      className={`inline-flex items-center justify-center font-bold transition-all duration-200 border shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 cursor-pointer select-none ${sizeClasses} ${
         isSpeaking
           ? "bg-indigo-600 text-white border-indigo-600 scale-95 shadow-indigo-500/30"
-          : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 hover:border-indigo-400"
+          : "bg-indigo-50/90 hover:bg-indigo-600 text-indigo-700 hover:text-white border-indigo-200 hover:border-indigo-600 shadow-2xs active:scale-98"
       } ${className}`}
     >
       <svg
