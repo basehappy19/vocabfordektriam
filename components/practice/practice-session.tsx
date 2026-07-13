@@ -49,7 +49,7 @@ const SYNONYM_DICTIONARY: Record<string, string[]> = {
   meticulous: ["thorough", "careful", "scrupulous", "precise", "fastidious", "diligent", "accurate"],
   procrastinate: ["delay", "postpone", "defer", "put off", "stall"],
   ubiquitous: ["omnipresent", "pervasive", "universal", "common", "everywhere", "widespread"],
-  resilient: ["tough", "strong", "hardy", "flexible", "durable", "buoyant"],
+  resilient: ["tough", "strong", "hardy", "flexible", "durable", "buoyant", "adaptable"],
   ambiguous: ["unclear", "vague", "equivocal", "obscure", "uncertain", "cryptic"],
   inevitable: ["unavoidable", "certain", "ineluctable", "destined", "sure"],
 };
@@ -234,6 +234,70 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
   const currentWordNumber = Math.min(totalWords, completedWords + 1);
   const percent = Math.min(100, Math.round((completedWords / totalWords) * 100));
 
+  // =========================================================================
+  // RULE 1: "ถ้าถูกให้เอาคำที่ตอบเป็นหลัก และคำหลัก มาอยู่ในคำย่อย"
+  // =========================================================================
+  const cleanTyped = typedInput.trim().toLowerCase();
+  const isTypedCorrectAndDifferent =
+    answerStatus === "CORRECT" &&
+    cleanTyped !== "" &&
+    vocab !== null &&
+    cleanTyped !== vocab.word.toLowerCase() &&
+    practiceDirection === "TH_TO_EN";
+
+  const displayWord = isTypedCorrectAndDifferent && vocab ? typedInput.trim().toLowerCase() : vocab?.word || "";
+  const displayPhonetic = isTypedCorrectAndDifferent ? "" : vocab?.phonetic;
+  const displaySynonyms =
+    isTypedCorrectAndDifferent && vocab
+      ? [
+          `${vocab.word}${vocab.phonetic ? ` (/${vocab.phonetic}/)` : ""}`,
+          ...(vocab.synonyms || []).filter((s) => s.toLowerCase() !== cleanTyped),
+        ]
+      : vocab?.synonyms || [];
+
+  // =========================================================================
+  // RULE 2 & 3: "ประโยคตัวอย่าง ทำให้คำนั้น หนาด้วย และคำที่เอามาเป็นตัวอย่างเอาตามที่ป้อนเป็นหลักก่อนถ้าความหมายถูก"
+  // =========================================================================
+  const renderFormattedSentence = (sentence: string | null | undefined) => {
+    if (!sentence || !vocab) return null;
+
+    let textToDisplay = sentence;
+    if (isTypedCorrectAndDifferent) {
+      const escapeLesson = vocab.word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const regLesson = new RegExp(`\\b${escapeLesson}[a-z]*\\b`, "gi");
+      if (regLesson.test(textToDisplay)) {
+        textToDisplay = textToDisplay.replace(regLesson, displayWord);
+      }
+    }
+
+    const targets = Array.from(
+      new Set([displayWord, vocab.word, ...(vocab.synonyms || [])].filter((w) => w && w.length >= 2))
+    );
+    targets.sort((a, b) => b.length - a.length);
+    const escapedTargets = targets.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    const regex = new RegExp(`\\b(${escapedTargets.join("|")})[a-z]*\\b`, "gi");
+
+    const parts = textToDisplay.split(regex);
+    return parts.map((part, idx) => {
+      if (
+        targets.some(
+          (t) => part.toLowerCase().startsWith(t.toLowerCase()) || t.toLowerCase().startsWith(part.toLowerCase())
+        ) &&
+        part.length >= 2
+      ) {
+        return (
+          <strong
+            key={idx}
+            className="font-black text-indigo-700 bg-indigo-100/90 px-1.5 py-0.5 rounded-lg border border-indigo-200 underline decoration-indigo-400 decoration-2"
+          >
+            {part}
+          </strong>
+        );
+      }
+      return part;
+    });
+  };
+
   return (
     <div className="absolute inset-0 w-full h-full overflow-hidden text-slate-900 font-sans bg-[#f8fafc]">
       {loading ? (
@@ -258,10 +322,7 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
         </div>
       ) : vocab ? (
         <>
-          {/* =========================================================================
-              Top Universal Progress Navbar (Works for Both iPad & PC/Mobile)
-              "เพิ่ม progress bar ว่าอยู่คำที่เท่าไหร่อีกเท่าไหร่จากเท่าไหร่ และหลอด %"
-              ========================================================================= */}
+          {/* Top Universal Progress Navbar */}
           <div className="absolute top-3 sm:top-4 left-3 sm:left-4 right-3 sm:right-4 z-30 pointer-events-none flex justify-center">
             <div className="w-full max-w-5xl pointer-events-auto bg-white/95 backdrop-blur-md px-4 sm:px-6 py-3 rounded-2xl border border-slate-200/80 shadow-md flex flex-col sm:flex-row items-center justify-between gap-3">
               <div className="flex items-center gap-2.5 shrink-0">
@@ -289,7 +350,10 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
               <div className="w-full sm:w-80 flex flex-col gap-1.5">
                 <div className="flex items-center justify-between text-xs font-extrabold text-slate-700">
                   <span>
-                    🎯 คำที่ {currentWordNumber} / {totalWords} <span className="text-slate-400 font-normal text-[11px]">(เหลือ {Math.max(0, totalWords - currentWordNumber)} คำ)</span>
+                    🎯 คำที่ {currentWordNumber} / {totalWords}{" "}
+                    <span className="text-slate-400 font-normal text-[11px]">
+                      (เหลือ {Math.max(0, totalWords - currentWordNumber)} คำ)
+                    </span>
                   </span>
                   <span className="text-indigo-600 font-mono font-black">{percent}%</span>
                 </div>
@@ -308,7 +372,6 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
               ========================================================================= */}
           {isDrawingDevice ? (
             <>
-              {/* Layer 0: 100% Full Viewport Edge-to-Edge Grid Drawing Pad */}
               <div className="absolute inset-0 w-full h-full z-0 pt-20">
                 <CanvasLoader
                   wordToPractice={vocab.word}
@@ -317,7 +380,6 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                 />
               </div>
 
-              {/* Floating Prompt inside Drawing Pad */}
               <div className="absolute top-20 left-4 z-10 pointer-events-none flex items-center gap-2.5">
                 <div className="pointer-events-auto flex items-center gap-2.5 bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl border border-slate-200/80 shadow-md">
                   {practiceDirection === "TH_TO_EN" ? (
@@ -333,7 +395,6 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                 </div>
               </div>
 
-              {/* Bottom Reveal Button & SRS Modal ("เมื่อมีการเขียนปุ่มเฉลยค่อยกดได้") */}
               <div className="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-20 pointer-events-none w-full max-w-xl px-4 flex flex-col items-center justify-center">
                 {!showAnswer ? (
                   <button
@@ -353,47 +414,66 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                     </span>
                   </button>
                 ) : (
-                  <div className="pointer-events-auto w-full bg-white/95 backdrop-blur-xl p-6 rounded-3xl border border-slate-200 shadow-2xl flex flex-col gap-4 max-h-[75vh] overflow-y-auto">
-                    {/* Animated Feedback Banner (สีเขียวหรือแดงให้เห็นชัด ๆ มีแอนิเมชัน) */}
+                  <div
+                    className={`pointer-events-auto w-full p-6 rounded-3xl border shadow-2xl flex flex-col gap-4 max-h-[75vh] overflow-y-auto transition-all duration-300 ${
+                      answerStatus === "CORRECT"
+                        ? "bg-emerald-50/80 backdrop-blur-xl border-emerald-400 shadow-emerald-500/15"
+                        : "bg-white/95 backdrop-blur-xl border-slate-200"
+                    }`}
+                  >
+                    {/* RULE 4: "เมื่อถูกให้ทั้งแทบเป็นสีเขียวไม่ต้องเด้ง ๆ ลายตา" */}
                     {answerStatus === "CORRECT" && (
-                      <div className="w-full p-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-2xl shadow-lg shadow-emerald-500/30 border border-emerald-300 flex items-center justify-between animate-bounce">
+                      <div className="w-full p-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-2xl shadow-md shadow-emerald-600/25 border border-emerald-300 flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <span className="text-3xl animate-pulse">🎉</span>
+                          <span className="text-3xl">🎉</span>
                           <div>
                             <h3 className="text-base sm:text-lg font-black">ถูกต้องเป๊ะ! (Correct)</h3>
                             <p className="text-xs text-emerald-100 font-medium">คำคัดหรือคำตอบของคุณตรงกับคลังข้อสอบจริง</p>
                           </div>
                         </div>
-                        <span className="px-3 py-1 bg-white text-emerald-800 text-xs font-black rounded-full uppercase">+1 EXP ✅</span>
+                        <span className="px-3 py-1 bg-white text-emerald-900 text-xs font-black rounded-full uppercase">+1 EXP ✅</span>
                       </div>
                     )}
                     {answerStatus === "WRONG" && (
                       <div className="w-full p-4 bg-gradient-to-r from-rose-600 to-red-600 text-white rounded-2xl shadow-lg shadow-rose-600/30 border border-rose-300 flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <span className="text-3xl animate-pulse">💡</span>
+                          <span className="text-3xl">💡</span>
                           <div>
                             <h3 className="text-base sm:text-lg font-black">มาดูเฉลยกันครับ (Review Answer)</h3>
                             <p className="text-xs text-rose-100 font-medium">ทบทวนความหมายและประโยคตัวอย่างด้านล่างได้เลย</p>
                           </div>
                         </div>
-                        <span className="px-3 py-1 bg-white text-rose-800 text-xs font-black rounded-full uppercase">Review ❌</span>
+                        <span className="px-3 py-1 bg-white text-rose-900 text-xs font-black rounded-full uppercase">Review ❌</span>
                       </div>
                     )}
 
-                    {/* Revealed Answer Box */}
-                    <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+                    <div className="flex items-center justify-between p-4 bg-white/80 border border-slate-200/80 rounded-2xl shadow-2xs">
                       <div className="flex items-baseline gap-3">
-                        <span className="text-3xl font-black text-slate-900">{vocab.word}</span>
-                        {vocab.phonetic && (
-                          <span className="text-base font-mono text-slate-500">/{vocab.phonetic}/</span>
+                        <span className="text-3xl font-black text-slate-900">{displayWord}</span>
+                        {displayPhonetic && (
+                          <span className="text-base font-mono text-slate-500">/{displayPhonetic}/</span>
                         )}
                       </div>
-                      <TTSButton text={vocab.word} lang="en-US" size="md" label="ฟังเสียงคำศัพท์" />
+                      <TTSButton text={displayWord} lang="en-US" size="md" label="ฟังเสียงคำศัพท์" />
+                    </div>
+
+                    <div className="flex flex-col gap-1 text-left">
+                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">
+                        คำแปลภาษาไทย / ความหมายพ้อง
+                      </span>
+                      <p className="text-lg sm:text-xl font-bold text-slate-800">{vocab.meaning}</p>
+                      {displaySynonyms && displaySynonyms.length > 0 && (
+                        <p className="text-xs sm:text-sm text-indigo-600 font-medium mt-1">
+                          🔗 คำพ้องความหมาย (Synonyms / คำหลัก): {displaySynonyms.join(", ")}
+                        </p>
+                      )}
                     </div>
 
                     {vocab.exampleSentence && (
-                      <blockquote className="p-3.5 bg-slate-50 rounded-xl border-l-4 border-indigo-600 flex flex-col gap-1">
-                        <p className="text-sm font-medium text-slate-900 italic">&ldquo;{vocab.exampleSentence}&rdquo;</p>
+                      <blockquote className="p-3.5 bg-white/80 rounded-xl border-l-4 border-indigo-600 flex flex-col gap-1 text-left shadow-2xs">
+                        <p className="text-sm sm:text-base font-medium text-slate-900 italic">
+                          &ldquo;{renderFormattedSentence(vocab.exampleSentence)}&rdquo;
+                        </p>
                         {vocab.exampleTarget && (
                           <p className="text-xs font-semibold text-slate-700 pt-1 border-t border-slate-200/60">
                             🇹🇭 คำแปล: {vocab.exampleTarget}
@@ -402,8 +482,7 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                       </blockquote>
                     )}
 
-                    {/* SRS Grading / Next Button */}
-                    <div className="flex flex-col gap-3 pt-2 border-t border-slate-200">
+                    <div className="flex flex-col gap-3 pt-2 border-t border-slate-200/80">
                       {mode === "AUTHENTICATED" ? (
                         <div className="grid grid-cols-4 gap-2">
                           <button
@@ -454,12 +533,9 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
           ) : (
             /* =========================================================================
                MODE 2: Non-iPad PC / Desktop / Laptop / Mobile (Full-Screen Big Typing)
-               Clean Minimal UI: Removed swap toggle & bottom note as requested in screenshot!
                ========================================================================= */
             <div className="absolute inset-0 w-full h-full flex flex-col justify-between p-6 sm:p-10 z-10 bg-[#f8fafc] overflow-y-auto pt-24 sm:pt-28">
-              {/* Center Stage: Big Prompt + Huge Typing Box ("พิมพ์เต็มจอใหญ่ ๆ") */}
               <div className="w-full max-w-3xl mx-auto my-auto flex flex-col items-center justify-center gap-8 py-4">
-                {/* Clean Big Prompt */}
                 <div className="text-center flex flex-col gap-2">
                   <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
                     {practiceDirection === "TH_TO_EN" ? "🇹🇭 คำแปลภาษาไทย (พิมพ์คำศัพท์อังกฤษ)" : "🇬🇧 คำศัพท์อังกฤษ (แปลความหมาย)"}
@@ -480,7 +556,6 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                   )}
                 </div>
 
-                {/* Huge Full-Width Input / Revealed Box */}
                 {!showAnswer ? (
                   <div className="w-full flex flex-col items-center gap-4">
                     <input
@@ -505,36 +580,41 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                       className="w-full text-2xl sm:text-4xl font-extrabold text-center py-6 px-8 bg-white border-2 border-slate-300 focus:border-indigo-600 rounded-3xl shadow-lg focus:outline-none focus:ring-4 focus:ring-indigo-100 transition-all text-slate-900 placeholder:text-slate-300 placeholder:font-normal placeholder:text-xl sm:placeholder:text-2xl"
                     />
 
-                    {/* Reveal Button (Removed swap toggle as crossed out in red!) */}
                     <div className="flex items-center justify-center mt-2">
                       <button
                         type="button"
                         onClick={handleRevealClick}
-                        className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-sm sm:text-base font-black transition-all shadow-md shadow-indigo-600/25 active:scale-98"
+                        className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-sm sm:text-base font-black transition-all shadow-md shadow-indigo-600/25 active:scale-98 cursor-pointer"
                       >
                         💡 ดูเฉลยทันที (Reveal Answer)
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div className="w-full bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-xl flex flex-col gap-6 animate-fadeIn">
-                    {/* Animated Feedback Banner (สีเขียวหรือแดงให้เห็นชัด ๆ มีแอนิเมชันสวยงาม) */}
+                  <div
+                    className={`w-full p-6 sm:p-8 rounded-3xl border transition-all duration-300 flex flex-col gap-6 ${
+                      answerStatus === "CORRECT"
+                        ? "bg-emerald-50/70 border-emerald-400 shadow-xl shadow-emerald-500/15"
+                        : "bg-white border-slate-200 shadow-xl"
+                    }`}
+                  >
+                    {/* RULE 4: "เมื่อถูกให้ทั้งแทบเป็นสีเขียวไม่ต้องเด้ง ๆ ลายตา" */}
                     {answerStatus === "CORRECT" && (
-                      <div className="w-full p-4.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-2xl shadow-lg shadow-emerald-500/30 border border-emerald-300 flex items-center justify-between animate-bounce">
+                      <div className="w-full p-4.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-2xl shadow-md shadow-emerald-600/25 border border-emerald-300 flex items-center justify-between transition-all duration-300">
                         <div className="flex items-center gap-3.5">
-                          <span className="text-4xl animate-pulse">🎉</span>
+                          <span className="text-4xl">🎉</span>
                           <div>
                             <h3 className="text-lg sm:text-xl font-black">สุดยอดมาก! ตอบถูกต้องเป๊ะ (Correct!)</h3>
                             <p className="text-xs sm:text-sm text-emerald-100 font-medium">คำตอบหรือคำพ้องความหมายของคุณตรงกับคลังข้อสอบจริง</p>
                           </div>
                         </div>
-                        <span className="px-3 py-1 bg-white text-emerald-800 text-xs font-black rounded-full uppercase shadow-2xs">+1 EXP ✅</span>
+                        <span className="px-3 py-1 bg-white text-emerald-900 text-xs font-black rounded-full uppercase shadow-2xs">+1 EXP ✅</span>
                       </div>
                     )}
                     {answerStatus === "WRONG" && (
                       <div className="w-full p-4.5 bg-gradient-to-r from-rose-600 to-red-600 text-white rounded-2xl shadow-lg shadow-rose-600/30 border border-rose-300 flex items-center justify-between">
                         <div className="flex items-center gap-3.5">
-                          <span className="text-4xl animate-pulse">💡</span>
+                          <span className="text-4xl">💡</span>
                           <div>
                             <h3 className="text-lg sm:text-xl font-black">ยังไม่ตรงเป๊ะ มาดูเฉลยที่ถูกต้องกันครับ (Incorrect)</h3>
                             <p className="text-xs sm:text-sm text-rose-100 font-medium">
@@ -542,42 +622,42 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                             </p>
                           </div>
                         </div>
-                        <span className="px-3 py-1 bg-white text-rose-800 text-xs font-black rounded-full uppercase shadow-2xs">Review ❌</span>
+                        <span className="px-3 py-1 bg-white text-rose-900 text-xs font-black rounded-full uppercase shadow-2xs">Review ❌</span>
                       </div>
                     )}
 
                     {/* Revealed Answer Content */}
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80">
                       <div>
                         <span className="text-xs font-bold uppercase text-indigo-600 tracking-wider">
                           ✨ เฉลยคำแปลและความหมาย
                         </span>
                         <div className="flex items-baseline gap-3 mt-1">
-                          <h2 className="text-3xl sm:text-4xl font-black text-slate-900">{vocab.word}</h2>
-                          {vocab.phonetic && (
-                            <span className="text-lg font-mono text-slate-500">/{vocab.phonetic}/</span>
+                          <h2 className="text-3xl sm:text-4xl font-black text-slate-900">{displayWord}</h2>
+                          {displayPhonetic && (
+                            <span className="text-lg font-mono text-slate-500">/{displayPhonetic}/</span>
                           )}
                         </div>
                       </div>
-                      <TTSButton text={vocab.word} lang="en-US" size="md" label="ฟังเสียงคำศัพท์" />
+                      <TTSButton text={displayWord} lang="en-US" size="md" label="ฟังเสียงคำศัพท์" />
                     </div>
 
-                    <div className="flex flex-col gap-1">
+                    <div className="flex flex-col gap-1 text-left">
                       <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">
                         คำแปลภาษาไทย / ความหมายพ้อง
                       </span>
                       <p className="text-lg sm:text-xl font-bold text-slate-800">{vocab.meaning}</p>
-                      {vocab.synonyms && vocab.synonyms.length > 0 && (
+                      {displaySynonyms && displaySynonyms.length > 0 && (
                         <p className="text-xs sm:text-sm text-indigo-600 font-medium mt-1">
-                          🔗 คำพ้องความหมาย (Synonyms): {vocab.synonyms.join(", ")}
+                          🔗 คำพ้องความหมาย (Synonyms / คำหลัก): {displaySynonyms.join(", ")}
                         </p>
                       )}
                     </div>
 
                     {vocab.exampleSentence && (
-                      <blockquote className="p-4 bg-slate-50 rounded-2xl border-l-4 border-indigo-600 flex flex-col gap-1.5">
+                      <blockquote className="p-4 bg-white/80 rounded-2xl border-l-4 border-indigo-600 flex flex-col gap-1.5 text-left shadow-2xs">
                         <p className="text-sm sm:text-base font-medium text-slate-900 italic">
-                          &ldquo;{vocab.exampleSentence}&rdquo;
+                          &ldquo;{renderFormattedSentence(vocab.exampleSentence)}&rdquo;
                         </p>
                         {vocab.exampleTarget && (
                           <p className="text-xs font-semibold text-slate-700 pt-1 border-t border-slate-200/60">
@@ -587,8 +667,7 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                       </blockquote>
                     )}
 
-                    {/* Spaced Repetition Grading */}
-                    <div className="flex flex-col gap-3 pt-2 border-t border-slate-100">
+                    <div className="flex flex-col gap-3 pt-2 border-t border-slate-200/80">
                       {mode === "AUTHENTICATED" ? (
                         <>
                           <span className="text-xs font-bold text-center text-slate-500">
@@ -631,7 +710,7 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                             setGuestCompletedCount((prev) => prev + 1);
                             fetchNextVocab();
                           }}
-                          className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl shadow-lg shadow-indigo-600/25 transition-all text-center text-base"
+                          className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl shadow-lg shadow-indigo-600/25 transition-all text-center text-base cursor-pointer"
                         >
                           คำศัพท์ถัดไป ➡️
                         </button>
