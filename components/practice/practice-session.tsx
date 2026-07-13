@@ -32,6 +32,10 @@ interface VocabData {
       isNewWord?: boolean;
       isEarlyPractice?: boolean;
     };
+    progress?: {
+      totalWords?: number;
+      completedWords?: number;
+    };
   };
 }
 
@@ -39,7 +43,6 @@ export interface PracticeSessionProps {
   initialCategory?: string;
 }
 
-// Common synonym mapping dictionary for TCAS / TGAT / A-Level words to support alternative correct answers
 const SYNONYM_DICTIONARY: Record<string, string[]> = {
   mitigate: ["alleviate", "relieve", "lessen", "reduce", "soothe", "ease", "diminish", "assuage"],
   alleviate: ["mitigate", "relieve", "lessen", "reduce", "soothe", "ease", "diminish", "assuage"],
@@ -94,6 +97,7 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
 
   const [practiceDirection, setPracticeDirection] = useState<"TH_TO_EN" | "EN_TO_TH">("TH_TO_EN");
   const [showAnswer, setShowAnswer] = useState(false);
+  const [answerStatus, setAnswerStatus] = useState<"IDLE" | "CORRECT" | "WRONG">("IDLE");
   const [isReviewing, setIsReviewing] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>(
     initialCategory === "all" ? "" : initialCategory
@@ -103,6 +107,9 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
   );
   const [typedInput, setTypedInput] = useState("");
 
+  // Local progress tracking for guest mode
+  const [guestCompletedCount, setGuestCompletedCount] = useState(0);
+
   // iPad / Drawing Device Detection vs PC/Mobile Typing Detection
   const [isDrawingDevice, setIsDrawingDevice] = useState(false);
   const [hasUserDrawn, setHasUserDrawn] = useState(false);
@@ -111,7 +118,6 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
     const checkDevice = () => {
       const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
       const isMacWithTouch = navigator.userAgent.includes("Macintosh") && navigator.maxTouchPoints > 1;
-      // iPad or tablet >= 768px screen width
       const isIpadOrTablet = (isTouch && window.innerWidth >= 768) || isMacWithTouch;
       setIsDrawingDevice(isIpadOrTablet);
     };
@@ -124,8 +130,9 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
     setLoading(true);
     setError(null);
     setShowAnswer(false);
+    setAnswerStatus("IDLE");
     setTypedInput("");
-    setHasUserDrawn(false); // Reset drawing requirement
+    setHasUserDrawn(false);
 
     try {
       let url = `/api/vocab/next`;
@@ -160,6 +167,7 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
     recordGuestWordCompletion(vocab.id, vocab.collectionId, vocab.category);
 
     if (mode === "GUEST") {
+      setGuestCompletedCount((prev) => prev + 1);
       fetchNextVocab();
       return;
     }
@@ -187,6 +195,28 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
     }
   };
 
+  const handleRevealClick = () => {
+    if (typedInput.trim().length > 0 && vocab) {
+      if (checkIsCorrectAnswer(typedInput, vocab, practiceDirection)) {
+        setAnswerStatus("CORRECT");
+        recordGuestWordCompletion(vocab.id, vocab.collectionId, vocab.category);
+        if (mode === "GUEST") setGuestCompletedCount((prev) => prev + 1);
+      } else {
+        setAnswerStatus("WRONG");
+      }
+    } else {
+      setAnswerStatus("IDLE");
+    }
+    setShowAnswer(true);
+  };
+
+  // Calculate Progress Stats
+  const totalWords = vocab?.meta?.progress?.totalWords || 1;
+  const dbCompleted = vocab?.meta?.progress?.completedWords || 0;
+  const completedWords = mode === "AUTHENTICATED" ? dbCompleted : guestCompletedCount;
+  const currentWordNumber = Math.min(totalWords, completedWords + 1);
+  const percent = Math.min(100, Math.round((completedWords / totalWords) * 100));
+
   return (
     <div className="absolute inset-0 w-full h-full overflow-hidden text-slate-900 font-sans bg-[#f8fafc]">
       {loading ? (
@@ -212,12 +242,57 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
       ) : vocab ? (
         <>
           {/* =========================================================================
+              Top Universal Progress Navbar (Works for Both iPad & PC/Mobile)
+              "เพิ่ม progress bar ว่าอยู่คำที่เท่าไหร่อีกเท่าไหร่จากเท่าไหร่ และหลอด %"
+              ========================================================================= */}
+          <div className="absolute top-3 sm:top-4 left-3 sm:left-4 right-3 sm:right-4 z-30 pointer-events-none flex justify-center">
+            <div className="w-full max-w-5xl pointer-events-auto bg-white/95 backdrop-blur-md px-4 sm:px-6 py-3 rounded-2xl border border-slate-200/80 shadow-md flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 shrink-0">
+                <Link
+                  href="/"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold text-slate-700 transition-all"
+                >
+                  <span>⬅️</span>
+                  <span>เปลี่ยน Collection</span>
+                </Link>
+                <span className="px-2.5 py-1 bg-indigo-50 text-indigo-700 rounded-full text-xs font-black border border-indigo-200">
+                  {vocab.category}
+                </span>
+                {(() => {
+                  const cefr = getCefrBadgeProps(vocab.cefrLevel || vocab.difficultyLevel);
+                  return (
+                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-extrabold border ${cefr.colorClass}`}>
+                      {cefr.badgeText}
+                    </span>
+                  );
+                })()}
+              </div>
+
+              {/* Word Progress Bar (% & Counter) */}
+              <div className="w-full sm:w-80 flex flex-col gap-1.5">
+                <div className="flex items-center justify-between text-xs font-extrabold text-slate-700">
+                  <span>
+                    🎯 คำที่ {currentWordNumber} / {totalWords} <span className="text-slate-400 font-normal text-[11px]">(เหลือ {Math.max(0, totalWords - currentWordNumber)} คำ)</span>
+                  </span>
+                  <span className="text-indigo-600 font-mono font-black">{percent}%</span>
+                </div>
+                <div className="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden p-0.5 shadow-inner">
+                  <div
+                    className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-500 rounded-full transition-all duration-500 ease-out"
+                    style={{ width: `${percent}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* =========================================================================
               MODE 1: iPad / Drawing Tablet Mode (Full Screen Edge-to-Edge Canvas)
               ========================================================================= */}
           {isDrawingDevice ? (
             <>
               {/* Layer 0: 100% Full Viewport Edge-to-Edge Grid Drawing Pad */}
-              <div className="absolute inset-0 w-full h-full z-0">
+              <div className="absolute inset-0 w-full h-full z-0 pt-20">
                 <CanvasLoader
                   wordToPractice={vocab.word}
                   showGuidelineWord={practiceDirection === "EN_TO_TH" || showAnswer}
@@ -225,29 +300,14 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                 />
               </div>
 
-              {/* Layer 1: Minimal Top Floating Bar */}
-              <div className="absolute top-3 sm:top-4 left-3 sm:left-4 z-10 pointer-events-none flex items-center gap-2.5">
-                <Link
-                  href="/"
-                  className="pointer-events-auto flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-white/90 backdrop-blur-md border border-slate-200/80 shadow-md hover:bg-white text-xs font-bold text-slate-700 transition-all"
-                >
-                  <span>⬅️</span>
-                  <span>เปลี่ยน Collection</span>
-                </Link>
-
+              {/* Floating Prompt inside Drawing Pad */}
+              <div className="absolute top-20 left-4 z-10 pointer-events-none flex items-center gap-2.5">
                 <div className="pointer-events-auto flex items-center gap-2.5 bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl border border-slate-200/80 shadow-md">
-                  <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-full text-[11px] font-bold uppercase">
-                    {vocab.category}
-                  </span>
                   {practiceDirection === "TH_TO_EN" ? (
-                    <h2 className="text-xl sm:text-2xl font-black text-slate-900">
-                      {vocab.meaning}
-                    </h2>
+                    <h2 className="text-xl sm:text-2xl font-black text-slate-900">{vocab.meaning}</h2>
                   ) : (
                     <div className="flex items-baseline gap-2">
-                      <h2 className="text-xl sm:text-2xl font-black text-slate-900">
-                        {vocab.word}
-                      </h2>
+                      <h2 className="text-xl sm:text-2xl font-black text-slate-900">{vocab.word}</h2>
                       {vocab.phonetic && (
                         <span className="text-sm font-mono text-slate-500">/{vocab.phonetic}/</span>
                       )}
@@ -256,13 +316,13 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                 </div>
               </div>
 
-              {/* Layer 2: Bottom Floating Button & SRS Modal ("เมื่อมีการเขียนปุ่มเฉลยค่อยกดได้") */}
+              {/* Bottom Reveal Button & SRS Modal ("เมื่อมีการเขียนปุ่มเฉลยค่อยกดได้") */}
               <div className="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-20 pointer-events-none w-full max-w-xl px-4 flex flex-col items-center justify-center">
                 {!showAnswer ? (
                   <button
                     type="button"
                     disabled={!hasUserDrawn && practiceDirection === "TH_TO_EN"}
-                    onClick={() => setShowAnswer(true)}
+                    onClick={handleRevealClick}
                     className={`pointer-events-auto w-full sm:w-auto px-7 py-4 rounded-2xl shadow-xl backdrop-blur-md transition-all text-base flex items-center justify-center gap-2 border font-extrabold ${
                       hasUserDrawn || practiceDirection === "EN_TO_TH"
                         ? "bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white border-indigo-400/30 animate-pulse cursor-pointer shadow-indigo-600/30"
@@ -276,7 +336,33 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                     </span>
                   </button>
                 ) : (
-                  <div className="pointer-events-auto w-full bg-white/95 backdrop-blur-xl p-6 rounded-3xl border border-slate-200 shadow-2xl flex flex-col gap-4 max-h-[80vh] overflow-y-auto">
+                  <div className="pointer-events-auto w-full bg-white/95 backdrop-blur-xl p-6 rounded-3xl border border-slate-200 shadow-2xl flex flex-col gap-4 max-h-[75vh] overflow-y-auto">
+                    {/* Animated Feedback Banner (สีเขียวหรือแดงให้เห็นชัด ๆ มีแอนิเมชัน) */}
+                    {answerStatus === "CORRECT" && (
+                      <div className="w-full p-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-2xl shadow-lg shadow-emerald-500/30 border border-emerald-300 flex items-center justify-between animate-bounce">
+                        <div className="flex items-center gap-3">
+                          <span className="text-3xl animate-pulse">🎉</span>
+                          <div>
+                            <h3 className="text-base sm:text-lg font-black">ถูกต้องเป๊ะ! (Correct)</h3>
+                            <p className="text-xs text-emerald-100 font-medium">คำคัดหรือคำตอบของคุณตรงกับคลังข้อสอบจริง</p>
+                          </div>
+                        </div>
+                        <span className="px-3 py-1 bg-white text-emerald-800 text-xs font-black rounded-full uppercase">+1 EXP ✅</span>
+                      </div>
+                    )}
+                    {answerStatus === "WRONG" && (
+                      <div className="w-full p-4 bg-gradient-to-r from-rose-600 to-red-600 text-white rounded-2xl shadow-lg shadow-rose-600/30 border border-rose-300 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-3xl animate-pulse">💡</span>
+                          <div>
+                            <h3 className="text-base sm:text-lg font-black">มาดูเฉลยกันครับ (Review Answer)</h3>
+                            <p className="text-xs text-rose-100 font-medium">ทบทวนความหมายและประโยคตัวอย่างด้านล่างได้เลย</p>
+                          </div>
+                        </div>
+                        <span className="px-3 py-1 bg-white text-rose-800 text-xs font-black rounded-full uppercase">Review ❌</span>
+                      </div>
+                    )}
+
                     {/* Revealed Answer Box */}
                     <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-2xl">
                       <div className="flex items-baseline gap-3">
@@ -334,7 +420,10 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                         </div>
                       ) : (
                         <button
-                          onClick={() => fetchNextVocab()}
+                          onClick={() => {
+                            setGuestCompletedCount((prev) => prev + 1);
+                            fetchNextVocab();
+                          }}
                           className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl shadow-md text-center text-base"
                         >
                           คำศัพท์ถัดไป ➡️
@@ -348,36 +437,11 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
           ) : (
             /* =========================================================================
                MODE 2: Non-iPad PC / Desktop / Laptop / Mobile (Full-Screen Big Typing)
-               "ไม่ขึ้นหน้าเขียนแต่เป็นพิมพ์แทนเลย พิมพ์เต็มจอใหญ่ ๆ และลด Text หลายๆจุดหน่อยมันลกตา"
+               Clean Minimal UI: Removed swap toggle & bottom note as requested in screenshot!
                ========================================================================= */
-            <div className="absolute inset-0 w-full h-full flex flex-col justify-between p-6 sm:p-10 z-10 bg-[#f8fafc] overflow-y-auto">
-              {/* Top Clean Navbar */}
-              <div className="w-full max-w-5xl mx-auto flex items-center justify-between">
-                <Link
-                  href="/"
-                  className="flex items-center gap-1.5 px-4 py-2 bg-white rounded-2xl border border-slate-200 shadow-2xs hover:bg-slate-50 text-xs sm:text-sm font-extrabold text-slate-700 transition-all"
-                >
-                  <span>⬅️</span>
-                  <span>เปลี่ยน Collection</span>
-                </Link>
-
-                <div className="flex items-center gap-2">
-                  <span className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-xs font-black border border-indigo-200">
-                    {vocab.category}
-                  </span>
-                  {(() => {
-                    const cefr = getCefrBadgeProps(vocab.cefrLevel || vocab.difficultyLevel);
-                    return (
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-extrabold border ${cefr.colorClass}`}>
-                        {cefr.badgeText}
-                      </span>
-                    );
-                  })()}
-                </div>
-              </div>
-
+            <div className="absolute inset-0 w-full h-full flex flex-col justify-between p-6 sm:p-10 z-10 bg-[#f8fafc] overflow-y-auto pt-24 sm:pt-28">
               {/* Center Stage: Big Prompt + Huge Typing Box ("พิมพ์เต็มจอใหญ่ ๆ") */}
-              <div className="w-full max-w-3xl mx-auto my-auto flex flex-col items-center justify-center gap-10 py-8">
+              <div className="w-full max-w-3xl mx-auto my-auto flex flex-col items-center justify-center gap-8 py-4">
                 {/* Clean Big Prompt */}
                 <div className="text-center flex flex-col gap-2">
                   <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
@@ -415,32 +479,56 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                         const val = e.target.value;
                         setTypedInput(val);
                         if (vocab && checkIsCorrectAnswer(val, vocab, practiceDirection)) {
+                          setAnswerStatus("CORRECT");
                           recordGuestWordCompletion(vocab.id, vocab.collectionId, vocab.category);
+                          if (mode === "GUEST") setGuestCompletedCount((prev) => prev + 1);
                           setShowAnswer(true);
                         }
                       }}
                       className="w-full text-2xl sm:text-4xl font-extrabold text-center py-6 px-8 bg-white border-2 border-slate-300 focus:border-indigo-600 rounded-3xl shadow-lg focus:outline-none focus:ring-4 focus:ring-indigo-100 transition-all text-slate-900 placeholder:text-slate-300 placeholder:font-normal placeholder:text-xl sm:placeholder:text-2xl"
                     />
 
-                    <div className="flex items-center gap-4 mt-2">
+                    {/* Reveal Button (Removed swap toggle as crossed out in red!) */}
+                    <div className="flex items-center justify-center mt-2">
                       <button
                         type="button"
-                        onClick={() => setShowAnswer(true)}
-                        className="px-6 py-2.5 bg-slate-200/80 hover:bg-slate-300 text-slate-700 rounded-2xl text-xs sm:text-sm font-bold transition-all"
+                        onClick={handleRevealClick}
+                        className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-sm sm:text-base font-black transition-all shadow-md shadow-indigo-600/25 active:scale-98"
                       >
                         💡 ดูเฉลยทันที (Reveal Answer)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPracticeDirection((prev) => (prev === "TH_TO_EN" ? "EN_TO_TH" : "TH_TO_EN"))}
-                        className="px-4 py-2.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 rounded-2xl text-xs font-bold transition-all shadow-2xs"
-                      >
-                        🔄 สลับด้านโจทย์
                       </button>
                     </div>
                   </div>
                 ) : (
                   <div className="w-full bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-xl flex flex-col gap-6 animate-fadeIn">
+                    {/* Animated Feedback Banner (สีเขียวหรือแดงให้เห็นชัด ๆ มีแอนิเมชันสวยงาม) */}
+                    {answerStatus === "CORRECT" && (
+                      <div className="w-full p-4.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-2xl shadow-lg shadow-emerald-500/30 border border-emerald-300 flex items-center justify-between animate-bounce">
+                        <div className="flex items-center gap-3.5">
+                          <span className="text-4xl animate-pulse">🎉</span>
+                          <div>
+                            <h3 className="text-lg sm:text-xl font-black">สุดยอดมาก! ตอบถูกต้องเป๊ะ (Correct!)</h3>
+                            <p className="text-xs sm:text-sm text-emerald-100 font-medium">คำตอบหรือคำพ้องความหมายของคุณตรงกับคลังข้อสอบจริง</p>
+                          </div>
+                        </div>
+                        <span className="px-3 py-1 bg-white text-emerald-800 text-xs font-black rounded-full uppercase shadow-2xs">+1 EXP ✅</span>
+                      </div>
+                    )}
+                    {answerStatus === "WRONG" && (
+                      <div className="w-full p-4.5 bg-gradient-to-r from-rose-600 to-red-600 text-white rounded-2xl shadow-lg shadow-rose-600/30 border border-rose-300 flex items-center justify-between">
+                        <div className="flex items-center gap-3.5">
+                          <span className="text-4xl animate-pulse">💡</span>
+                          <div>
+                            <h3 className="text-lg sm:text-xl font-black">ยังไม่ตรงเป๊ะ มาดูเฉลยที่ถูกต้องกันครับ (Incorrect)</h3>
+                            <p className="text-xs sm:text-sm text-rose-100 font-medium">
+                              {typedInput ? `คุณตอบ: "${typedInput}" • เฉลยที่ถูกต้องคือ: "${vocab.word}"` : "ไม่เป็นไร! ทบทวนความหมายและตัวอย่างประโยคด้านล่างได้เลย"}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="px-3 py-1 bg-white text-rose-800 text-xs font-black rounded-full uppercase shadow-2xs">Review ❌</span>
+                      </div>
+                    )}
+
                     {/* Revealed Answer Content */}
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
                       <div>
@@ -522,7 +610,10 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                         </>
                       ) : (
                         <button
-                          onClick={() => fetchNextVocab()}
+                          onClick={() => {
+                            setGuestCompletedCount((prev) => prev + 1);
+                            fetchNextVocab();
+                          }}
                           className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl shadow-lg shadow-indigo-600/25 transition-all text-center text-base"
                         >
                           คำศัพท์ถัดไป ➡️
@@ -531,11 +622,6 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                     </div>
                   </div>
                 )}
-              </div>
-
-              {/* Minimal Bottom Info */}
-              <div className="w-full max-w-5xl mx-auto text-center text-xs font-medium text-slate-400">
-                💡 พิมพ์คำศัพท์หรือคำพ้องความหมายให้ถูกต้องเป๊ะ ระบบจะเฉลยทันทีโดยไม่ต้องกดปุ่ม
               </div>
             </div>
           )}
