@@ -180,12 +180,20 @@ export default function DrawingPad({
   };
 
   return (
-    <div className={`flex flex-col gap-3 w-full ${className}`}>
-      {/* Controls & Toolbar (Clean Light Theme) */}
-      <div className="flex flex-wrap items-center justify-between gap-2 bg-white/95 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-slate-200 shadow-2xs">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider mr-1">
-            🎨 สีปากกา
+    <div className={`flex-1 w-full flex flex-col ${className || ""}`}>
+      {/* iPad Apple Pencil Massive Full-Screen Grid Canvas Area with Floating GoodNotes Toolbar */}
+      <div
+        className="relative w-full min-h-[580px] sm:min-h-[680px] md:min-h-[760px] flex-1 rounded-3xl border-2 border-slate-300 overflow-hidden shadow-inner transition-all flex flex-col"
+        style={{
+          backgroundColor: "#ffffff",
+          backgroundImage: `linear-gradient(to right, #e2e8f0 1px, transparent 1px), linear-gradient(to bottom, #e2e8f0 1px, transparent 1px)`,
+          backgroundSize: "32px 32px",
+        }}
+      >
+        {/* Floating GoodNotes-style Toolbar inside top-right of canvas */}
+        <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 flex items-center gap-1.5 sm:gap-2 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-slate-200/80 shadow-md">
+          <span className="text-[11px] font-bold text-slate-500 hidden sm:inline mr-1">
+            🎨 สีปากกา:
           </span>
           {[
             { color: "#4f46e5", label: "น้ำเงิน Indigo" },
@@ -199,46 +207,35 @@ export default function DrawingPad({
               onClick={() => setStrokeColor(item.color)}
               aria-label={`เปลี่ยนสีปากกาเป็นสี${item.label}`}
               aria-pressed={strokeColor === item.color}
-              className={`w-7 h-7 rounded-full border-2 transition-transform ${
+              className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full border-2 transition-all ${
                 strokeColor === item.color
                   ? "scale-110 border-indigo-600 ring-2 ring-indigo-200 shadow-xs"
-                  : "border-transparent hover:scale-105"
+                  : "border-transparent hover:scale-105 opacity-85 hover:opacity-100"
               }`}
               style={{ backgroundColor: item.color }}
             />
           ))}
-        </div>
 
-        <div className="flex items-center gap-2">
+          <span className="w-px h-5 bg-slate-200 mx-1 hidden sm:inline-block" />
+
           <button
             type="button"
             onClick={handleUndo}
             disabled={history.length === 0}
             aria-label="ย้อนกลับการเขียนก่อนหน้า (Undo)"
-            className="px-3 py-1.5 text-xs font-medium rounded-xl text-slate-700 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors border border-slate-200/80"
+            className="px-2.5 py-1 text-xs font-semibold rounded-xl text-slate-700 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors border border-slate-200/80"
           >
-            ↩️ ย้อนกลับ (Undo)
+            ↩️ ย้อนกลับ
           </button>
           <button
             type="button"
             onClick={handleClear}
             aria-label="ล้างกระดานเขียนคำศัพท์ (Clear Canvas)"
-            className="px-3 py-1.5 text-xs font-medium rounded-xl text-rose-600 bg-rose-50 hover:bg-rose-100 transition-colors border border-rose-200/80"
+            className="px-2.5 py-1 text-xs font-semibold rounded-xl text-rose-600 bg-rose-50 hover:bg-rose-100 transition-colors border border-rose-200/80"
           >
-            🗑️ ล้างกระดาน (Clear)
+            🗑️ ล้างกระดาน
           </button>
         </div>
-      </div>
-
-      {/* iPad Apple Pencil Large Clean Grid Canvas Area ("ทำให้โซนเขียนเต็มหน้าจอ" + "ลายตารางจาง ๆ") */}
-      <div
-        className="relative w-full min-h-[480px] sm:min-h-[580px] md:min-h-[660px] flex-1 rounded-3xl border-2 border-slate-300 overflow-hidden shadow-inner transition-all"
-        style={{
-          backgroundColor: "#ffffff",
-          backgroundImage: `linear-gradient(to right, #e2e8f0 1px, transparent 1px), linear-gradient(to bottom, #e2e8f0 1px, transparent 1px)`,
-          backgroundSize: "32px 32px",
-        }}
-      >
         {/* Subtle Watermark Guideline (Only when showGuidelineWord is true) */}
         {!hasDrawn && wordToPractice && showGuidelineWord && (
           <div
