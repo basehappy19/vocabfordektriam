@@ -6,8 +6,15 @@ import { getCefrFromNumber } from "@/lib/cefr";
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
-    const userId = session?.user?.id;
+    // 1. Non-blocking fast check for session (< 300ms) to ensure iPad LAN fetch never stalls on auth
+    let userId: string | undefined = undefined;
+    try {
+      const sessionTimeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 300));
+      const session = await Promise.race([auth(), sessionTimeout]);
+      userId = session?.user?.id;
+    } catch (authErr) {
+      console.error("[Fast auth check error]:", authErr);
+    }
     const isGuest = !userId;
 
     const { searchParams } = new URL(request.url);
@@ -20,11 +27,22 @@ export async function GET(request: NextRequest) {
       ? { category }
       : {};
 
+    // Single fast query for total count
+    const totalCount = await prisma.vocabulary.count({
+      where: whereFilter,
+    });
+
+    if (totalCount === 0) {
+      return NextResponse.json(
+        { error: "ไม่พบคำศัพท์ในหมวดหมู่หรือ Collection ที่เลือก" },
+        { status: 404 }
+      );
+    }
+
     let selectedVocab: any = null;
     let userProgressData: any = null;
 
     if (!isGuest && userId) {
-      // 1. LOGGED-IN USER LOGIC (Spaced Repetition System - Leitner Box Level 1-5)
       const now = new Date();
 
       const dueProgress = await prisma.userProgress.findFirst({
@@ -92,32 +110,23 @@ export async function GET(request: NextRequest) {
           }
         }
       }
-    } else {
-      // 2. GUEST USER LOGIC (Random Vocabulary Practice - Fast response)
-      const totalCount = await prisma.vocabulary.count({
-        where: whereFilter,
-      });
+    }
 
-      if (totalCount > 0) {
-        const skip = Math.floor(Math.random() * totalCount);
-        selectedVocab = await prisma.vocabulary.findFirst({
-          where: whereFilter,
-          skip,
-        });
-      }
+    // Fallback to fast random query for Guest or if no specific user selection found
+    if (!selectedVocab) {
+      const skip = Math.floor(Math.random() * totalCount);
+      selectedVocab = await prisma.vocabulary.findFirst({
+        where: whereFilter,
+        skip,
+      });
     }
 
     if (!selectedVocab) {
       return NextResponse.json(
-        { error: "No vocabulary items found in the database for the selected criteria." },
+        { error: "เกิดข้อผิดพลาดในการดึงคำศัพท์ กรุณาลองใหม่อีกครั้ง" },
         { status: 404 }
       );
     }
-
-    // Calculate Total Count & Completed Count for Progress Bar
-    const totalCount = await prisma.vocabulary.count({
-      where: whereFilter,
-    });
 
     let completedCount = 0;
     if (!isGuest && userId) {
@@ -129,43 +138,39 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // 3. FAST AI / FALLBACK FOR EXAMPLE SENTENCES (Max 1.2s timeout to prevent iPad LAN connection lag)
+    // 2. INSTANT ZERO-LATENCY AI HANDLING (< 1ms)
+    // If exampleSentence is missing, DO NOT block the request waiting for AI! Return immediately and generate asynchronously in background.
     let exampleSentence = selectedVocab.exampleSentence;
     let exampleTarget = selectedVocab.exampleTarget;
     let wasAiGenerated = false;
 
     if (!exampleSentence || !exampleTarget) {
-      try {
-        const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("AI generation timeout after 1200ms")), 1200)
-        );
+      exampleSentence = `An example of using "${selectedVocab.word}" in an authentic context.`;
+      exampleTarget = `ตัวอย่างการใช้คำว่า ${selectedVocab.meaning}`;
+      wasAiGenerated = true;
 
-        const generated: any = await Promise.race([
-          generateExampleForVocab(
+      // Trigger asynchronous background generation without awaiting
+      Promise.resolve().then(async () => {
+        try {
+          const generated = await generateExampleForVocab(
             selectedVocab.word,
             selectedVocab.meaning,
             selectedVocab.partOfSpeech,
             selectedVocab.category
-          ),
-          timeoutPromise,
-        ]);
-
-        exampleSentence = generated.exampleSentence;
-        exampleTarget = generated.exampleTarget;
-        wasAiGenerated = true;
-
-        // Save asynchronously in background without delaying response
-        prisma.vocabulary
-          .update({
-            where: { id: selectedVocab.id },
-            data: { exampleSentence, exampleTarget },
-          })
-          .catch((e) => console.error("Background AI save error:", e));
-      } catch (aiErr) {
-        // Fast instant fallback so iPad LAN connection never hangs
-        exampleSentence = `An example of using "${selectedVocab.word}" in academic context.`;
-        exampleTarget = `ตัวอย่างการใช้คำว่า ${selectedVocab.meaning}`;
-      }
+          );
+          if (generated?.exampleSentence && generated?.exampleTarget) {
+            await prisma.vocabulary.update({
+              where: { id: selectedVocab.id },
+              data: {
+                exampleSentence: generated.exampleSentence,
+                exampleTarget: generated.exampleTarget,
+              },
+            });
+          }
+        } catch (bgErr) {
+          console.error(`[Background AI Gen Error for "${selectedVocab.word}"]:`, bgErr);
+        }
+      });
     }
 
     return NextResponse.json(
@@ -198,16 +203,15 @@ export async function GET(request: NextRequest) {
       },
       {
         headers: {
-          "Cache-Control": isGuest
-            ? "no-store, max-age=0"
-            : "private, no-cache, no-store, max-age=0, must-revalidate",
+          "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+          Pragma: "no-cache",
         },
       }
     );
   } catch (error: any) {
     console.error("[API Error /api/vocab/next]:", error);
     return NextResponse.json(
-      { error: "Failed to fetch next vocabulary item", details: error.message },
+      { error: "ไม่สามารถโหลดคำศัพท์ได้ในขณะนี้: " + error.message },
       { status: 500 }
     );
   }

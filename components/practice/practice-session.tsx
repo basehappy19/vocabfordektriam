@@ -142,9 +142,22 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
         url += `?category=${encodeURIComponent(selectedCategory)}`;
       }
 
-      const res = await fetch(url);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+      const res = await fetch(url, {
+        cache: "no-store",
+        headers: {
+          Pragma: "no-cache",
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+        },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
       if (!res.ok) {
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "เกิดข้อผิดพลาดในการโหลดคำศัพท์");
       }
 
@@ -152,7 +165,11 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
       setVocab(json.data);
       setMode(json.mode);
     } catch (err: any) {
-      setError(err.message);
+      if (err.name === "AbortError" || err.message?.includes("abort")) {
+        setError("เชื่อมต่อเซิร์ฟเวอร์ใช้เวลานานผิดปกติ กรุณาตรวจสอบสัญญาณ Wi-Fi และลองใหม่อีกครั้ง");
+      } else {
+        setError(err.message || "ไม่สามารถโหลดข้อมูลคำศัพท์ได้ กรุณาลองใหม่อีกครั้ง");
+      }
     } finally {
       setLoading(false);
     }
