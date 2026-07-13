@@ -13,6 +13,7 @@ declare module "next-auth" {
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
+  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "vocab_dektriam_super_secret_key_2026_tcas_tgat",
   providers: [
     // Providers can be added here (e.g. Google, Credentials, LINE for Thai students)
   ],
