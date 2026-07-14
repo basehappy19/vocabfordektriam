@@ -48,15 +48,10 @@ export default function CollectionCard({
     <div className="group relative flex flex-col justify-between gap-4 p-5 rounded-2xl bg-white border border-slate-200/80 hover:border-slate-300 hover:shadow-md transition-all duration-200">
       <Link href={`/collection/${collection.id}`} className="cursor-pointer flex flex-col gap-3 flex-1 focus:outline-none">
         <div className="flex items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-900 text-white tracking-wide">
-              {collection.category}
-            </span>
-            <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${collection.badgeColor}`}>
-              {collection.badge}
-            </span>
-          </div>
-          <span className="text-[11px] font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200/60">
+          <span className="px-2.5 py-1 bg-slate-900 text-white rounded-full text-xs font-bold tracking-wide shadow-2xs">
+            {collection.category}
+          </span>
+          <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200/60 tracking-wide">
             {collection.cefrLevel}
           </span>
         </div>

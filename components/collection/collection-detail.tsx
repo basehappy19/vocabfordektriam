@@ -5,6 +5,7 @@ import Link from "next/link";
 import { getCefrBadgeProps } from "@/lib/cefr";
 import { getCompletedWordIds } from "@/lib/progress";
 import { ArrowLeft, CheckCircle2, Search, X, BookOpen, PenTool } from "lucide-react";
+import { AuthNavButtons } from "@/components/auth/auth-buttons";
 
 interface VocabItem {
   id: string;
@@ -72,8 +73,8 @@ export default function CollectionDetail({
 
   const cefrInfo = getCefrBadgeProps(collection.cefrLevel || "B2");
 
-  const cleanTitle = collection.title.replace(/\s*\([^)]*\)/g, "").replace(/[\u10000-\u10FFFF]/g, "").trim();
-  const cleanDesc = collection.description.replace(/\s*\([^)]*\)/g, "").replace(/[\u10000-\u10FFFF]/g, "").trim();
+  const cleanTitle = collection.title.replace(/\s*\([^)]*\)/g, "").trim();
+  const cleanDesc = collection.description.replace(/\s*\([^)]*\)/g, "").trim();
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans pb-16">
@@ -88,40 +89,33 @@ export default function CollectionDetail({
             {!isGuest && userName ? (
               <span className="px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl flex items-center gap-1.5 shadow-2xs">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span>บันทึกความคืบหน้าบนคลาวด์: {userName}</span>
+                <span>{userName}</span>
               </span>
-            ) : (
-              <span className="px-3 py-1 bg-slate-100 text-slate-700 border border-slate-200 rounded-xl flex items-center gap-1.5 shadow-2xs">
-                <span className="w-2 h-2 rounded-full bg-slate-500" />
-                <span>บันทึกข้อมูลในเครื่อง</span>
-              </span>
-            )}
+            ) : null}
+            <AuthNavButtons user={!isGuest ? { name: userName } : null} />
           </div>
         </nav>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-5xl mx-auto px-4 pt-6 flex flex-col gap-6">
-        {/* Collection Hero Banner Card */}
-        <div className={`p-6 sm:p-8 rounded-3xl bg-gradient-to-br ${collection.color} bg-white border border-slate-200 shadow-sm flex flex-col gap-5`}>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3.5">
-              <div className="p-3 bg-white/95 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center">
+      <main className="w-full max-w-5xl mx-auto px-4 pt-6 sm:pt-8 flex flex-col gap-6">
+        {/* Hero Card */}
+        <div className="p-6 sm:p-8 rounded-3xl bg-white border border-slate-200/80 shadow-sm relative overflow-hidden">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-6 border-b border-slate-100">
+            <div className="flex items-start gap-4 sm:gap-5">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100/80 flex items-center justify-center shrink-0 shadow-xs">
                 <BookOpen className="w-6 h-6 text-indigo-600" />
               </div>
               <div>
-                <div className="flex items-center gap-2 mb-1.5">
-                  <span className="px-3.5 py-1 bg-slate-900 text-white rounded-full text-sm font-extrabold tracking-wide shadow-xs">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="px-3.5 py-1 bg-slate-900 text-white rounded-full text-xs font-bold tracking-wide shadow-2xs">
                     {collection.category}
                   </span>
-                  <span className={`px-3 py-0.5 rounded-full text-xs font-semibold border ${collection.badgeColor}`}>
-                    {collection.badge}
-                  </span>
-                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${cefrInfo.colorClass}`}>
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold border ${cefrInfo.colorClass}`}>
                     {cefrInfo.cefr}
                   </span>
                 </div>
-                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 tracking-tight leading-tight">
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">
                   {cleanTitle}
                 </h1>
               </div>
