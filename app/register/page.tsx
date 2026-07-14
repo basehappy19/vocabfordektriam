@@ -150,7 +150,7 @@ export default function RegisterPage() {
             <div className="flex flex-col gap-3 animate-fade-in">
               <label className="text-xs sm:text-sm font-bold text-slate-700 tracking-wide flex items-center gap-2">
                 <GraduationCap className="w-4 h-4 text-indigo-600" />
-                <span>คุณคือเด็กรุ่นไหน? (บังคับเลือกก่อนตั้งรหัสผ่าน)</span>
+                <span>คุณคือเด็กรุ่นไหน?</span>
               </label>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
