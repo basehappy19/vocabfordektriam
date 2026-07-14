@@ -18,15 +18,17 @@ export async function POST(request: NextRequest) {
     const correctCount = answers.filter((a: any) => a.isCorrect).length;
     const wrongCount = totalWords - correctCount;
 
+    const safeCategory = typeof category === "string" && category.trim() !== "" ? category : "GENERAL";
+
     const practiceSession = await prisma.practiceSession.create({
       data: {
-        userId,
-        collectionId,
-        category,
+        user: userId ? { connect: { id: userId } } : undefined,
+        collectionId: collectionId || null,
+        category: safeCategory,
         totalWords,
         correctCount,
         wrongCount,
-        durationSeconds,
+        durationSeconds: Number(durationSeconds) || 0,
         answers: {
           create: answers.map((a: any) => ({
             vocabId: a.vocabId || null,
