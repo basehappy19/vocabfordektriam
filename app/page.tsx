@@ -60,7 +60,7 @@ export default async function Home() {
     <div className="min-h-screen flex flex-col justify-between bg-[#f8fafc] text-slate-900 font-sans pb-12">
       {/* Minimalist Header / Navbar */}
       <header className="sticky top-0 z-50 w-full bg-white/90 backdrop-blur-md border-b border-slate-200/80">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between">
           <Link
             href="/"
             className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 hover:text-indigo-600 transition-colors"
@@ -73,7 +73,7 @@ export default async function Home() {
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 w-full max-w-6xl mx-auto">
+      <main className="flex-1 w-full max-w-7xl mx-auto">
         <DecksLibraryClient
           collections={formattedCollections}
           isGuest={isGuest}
@@ -82,7 +82,7 @@ export default async function Home() {
       </main>
 
       {/* Minimalist Footer */}
-      <footer className="w-full max-w-6xl mx-auto py-6 px-4 border-t border-slate-200/60 text-center text-xs text-slate-400 font-medium mt-12">
+      <footer className="w-full max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 border-t border-slate-200/60 text-center text-xs text-slate-400 font-medium mt-12">
         © {new Date().getFullYear()} VocabForDekTriam
       </footer>
     </div>

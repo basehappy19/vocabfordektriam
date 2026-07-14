@@ -129,11 +129,11 @@ export default function DecksLibraryClient({
       </div>
 
       {/* Decks Grid Sections */}
-      <div className="w-full flex flex-col gap-10 px-4 mt-2">
+      <div className="w-full flex flex-col gap-10 px-0 sm:px-4 lg:px-6 mt-2">
         {isFilterActive ? (
           /* Filtered Unified View */
           <section className="flex flex-col gap-4">
-            <div className="flex items-center justify-between border-b border-slate-200/60 pb-3">
+            <div className="flex items-center justify-between border-b border-slate-200/60 pb-3 px-4 sm:px-0">
               <div className="flex items-center gap-2">
                 <h2 className="text-lg sm:text-xl font-bold text-slate-800 tracking-tight">
                   ผลการค้นหาคลังคำศัพท์
@@ -161,7 +161,7 @@ export default function DecksLibraryClient({
                 <p className="text-sm text-slate-500 font-medium">ไม่พบคลังคำศัพท์ที่ตรงเงื่อนไขการค้นหา</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-0 sm:gap-4">
                 {filteredCollections.map((col) => (
                   <CollectionCard
                     key={col.id}
@@ -179,7 +179,7 @@ export default function DecksLibraryClient({
             {/* Recommended Section */}
             {recommendedFiltered.length > 0 && (
               <section className="flex flex-col gap-4">
-                <div className="flex items-center justify-between border-b border-slate-200/60 pb-3">
+                <div className="flex items-center justify-between border-b border-slate-200/60 pb-3 px-4 sm:px-0">
                   <div className="flex items-center gap-2">
                     <h2 className="text-lg sm:text-xl font-bold text-slate-800 tracking-tight">
                       ยอดนิยม
@@ -196,7 +196,7 @@ export default function DecksLibraryClient({
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-0 sm:gap-4">
                   {recommendedFiltered.map((col) => (
                     <CollectionCard
                       key={col.id}
@@ -212,7 +212,7 @@ export default function DecksLibraryClient({
             {/* TGAT1 Section */}
             {tgat1Filtered.length > 0 && (
               <section className="flex flex-col gap-4">
-                <div className="flex items-center justify-between border-b border-slate-200/60 pb-3">
+                <div className="flex items-center justify-between border-b border-slate-200/60 pb-3 px-4 sm:px-0">
                   <div className="flex items-center gap-2">
                     <h2 className="text-lg sm:text-xl font-bold text-slate-800 tracking-tight">
                       TGAT 1
@@ -229,7 +229,7 @@ export default function DecksLibraryClient({
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-0 sm:gap-4">
                   {tgat1Filtered.map((col) => (
                     <CollectionCard
                       key={col.id}
@@ -245,7 +245,7 @@ export default function DecksLibraryClient({
             {/* A-Level Section */}
             {aLevelFiltered.length > 0 && (
               <section className="flex flex-col gap-4">
-                <div className="flex items-center justify-between border-b border-slate-200/60 pb-3">
+                <div className="flex items-center justify-between border-b border-slate-200/60 pb-3 px-4 sm:px-0">
                   <div className="flex items-center gap-2">
                     <h2 className="text-lg sm:text-xl font-bold text-slate-800 tracking-tight">
                       A-Level
@@ -262,7 +262,7 @@ export default function DecksLibraryClient({
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-0 sm:gap-4">
                   {aLevelFiltered.map((col) => (
                     <CollectionCard
                       key={col.id}

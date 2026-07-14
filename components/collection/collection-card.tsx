@@ -48,7 +48,7 @@ export default function CollectionCard({
   const cleanDesc = collection.description.replace(/\s*\([^)]*\)/g, "").replace(/A-Level\s*82/gi, "A-Level").replace(/\b82\b/g, "").replace(/\s+/g, " ").trim();
 
   return (
-    <div className="group relative flex flex-col justify-between gap-4 p-5 rounded-2xl bg-white border border-slate-200/80 hover:border-slate-300 hover:shadow-md transition-all duration-200">
+    <div className="group relative flex flex-col justify-between gap-4 p-5 sm:p-6 rounded-none sm:rounded-2xl bg-white border-x-0 border-y sm:border border-slate-200/80 hover:border-slate-300 hover:shadow-md transition-all duration-200">
       <Link href={`/collection/${collection.id}`} className="cursor-pointer flex flex-col gap-3 flex-1 focus:outline-none">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-1.5">

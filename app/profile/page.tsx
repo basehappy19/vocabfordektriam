@@ -149,11 +149,11 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] py-10 px-4 sm:px-6 lg:px-8 font-sans text-slate-900">
-      <div className="max-w-3xl mx-auto flex flex-col gap-8">
+    <div className="min-h-screen bg-[#f8fafc] py-4 sm:py-10 px-0 sm:px-6 lg:px-8 font-sans text-slate-900">
+      <div className="w-full max-w-4xl mx-auto flex flex-col gap-6 sm:gap-8">
         {/* Navigation & Header */}
         <div className="flex flex-col gap-4">
-          <div>
+          <div className="px-4 sm:px-0">
             <Link
               href="/"
               className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors"
@@ -163,7 +163,7 @@ export default function ProfilePage() {
             </Link>
           </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 sm:p-8 bg-white rounded-3xl border border-slate-200/80 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 sm:p-8 bg-white rounded-none sm:rounded-3xl border-x-0 border-y sm:border border-slate-200/80 shadow-xs">
             <div className="flex items-center gap-4 sm:gap-5">
               <div className="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
                 <User className="w-7 h-7 stroke-[2.2]" />
@@ -285,7 +285,7 @@ export default function ProfilePage() {
         </div>
 
         {/* Card 2: Password Change */}
-        <div className="bg-white p-6 sm:p-10 rounded-3xl border border-slate-200/80 shadow-sm flex flex-col gap-6">
+        <div className="bg-white p-6 sm:p-10 rounded-none sm:rounded-3xl border-x-0 border-y sm:border border-slate-200/80 shadow-xs flex flex-col gap-6">
           <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
             <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700 shrink-0">
               <Lock className="w-5 h-5" />

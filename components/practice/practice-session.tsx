@@ -946,8 +946,8 @@ export default function PracticeSession({
     const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
 
     return (
-      <div className="absolute inset-0 w-full h-full overflow-y-auto bg-[#f8fafc] text-slate-900 font-sans p-4 sm:p-8 md:p-12 z-50">
-        <div className="max-w-4xl mx-auto bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden flex flex-col my-auto">
+      <div className="absolute inset-0 w-full h-full overflow-y-auto bg-[#f8fafc] text-slate-900 font-sans p-0 sm:p-8 md:p-12 z-50">
+        <div className="w-full max-w-4xl mx-auto bg-white rounded-none sm:rounded-3xl border-x-0 border-y sm:border border-slate-200 shadow-xl overflow-hidden flex flex-col my-auto">
           {/* Header */}
           <div className="p-6 sm:p-8 border-b border-slate-200 bg-slate-900 text-white flex flex-col gap-2">
             <span className="text-xs font-bold uppercase tracking-wider text-indigo-400">

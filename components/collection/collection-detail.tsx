@@ -130,8 +130,8 @@ export default function CollectionDetail({
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans pb-16">
       {/* Navbar */}
-      <header className="sticky top-3 sm:top-4 z-40 w-full max-w-5xl mx-auto px-4">
-        <nav className="flex items-center justify-between py-3 px-5 bg-white/80 backdrop-blur-md border border-slate-200/80 rounded-2xl shadow-sm">
+      <header className="sticky top-0 sm:top-4 z-40 w-full max-w-7xl mx-auto px-0 sm:px-6 lg:px-8">
+        <nav className="flex items-center justify-between py-3.5 px-4 sm:px-6 bg-white/90 sm:bg-white/80 backdrop-blur-md border-x-0 border-t-0 sm:border border-slate-200/80 rounded-none sm:rounded-2xl shadow-xs">
           <Link href="/" className="cursor-pointer flex items-center gap-2 font-semibold text-slate-700 hover:text-indigo-600 transition-colors text-sm">
             <ArrowLeft className="w-4 h-4" />
             <span>กลับหน้าเลือกคลังคำศัพท์</span>
@@ -143,9 +143,9 @@ export default function CollectionDetail({
       </header>
 
       {/* Main Content */}
-      <main className="w-full max-w-5xl mx-auto px-4 pt-6 sm:pt-8 flex flex-col gap-6">
+      <main className="w-full max-w-7xl mx-auto px-0 sm:px-6 lg:px-8 pt-3 sm:pt-8 flex flex-col gap-4 sm:gap-6 pb-12 sm:pb-16">
         {/* Hero Card */}
-        <div className="p-7 sm:p-9 rounded-3xl bg-white border border-slate-200/80 shadow-sm relative overflow-hidden flex flex-col gap-7">
+        <div className="p-5 sm:p-9 rounded-none sm:rounded-3xl bg-white border-x-0 border-y sm:border border-slate-200/80 shadow-xs relative overflow-hidden flex flex-col gap-6 sm:gap-7">
           <div className="flex items-start gap-4 sm:gap-5">
             <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-indigo-50 border border-indigo-100/80 flex items-center justify-center shrink-0 shadow-xs mt-0.5">
               <BookOpen className="w-7 h-7 text-indigo-600" />
@@ -267,7 +267,7 @@ export default function CollectionDetail({
         </div>
 
         {/* Word List Preview Section */}
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 flex flex-col gap-5">
+        <div className="bg-white rounded-none sm:rounded-3xl border-x-0 border-y sm:border border-slate-200 shadow-xs p-5 sm:p-6 flex flex-col gap-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
             <div>
               <h2 className="text-lg sm:text-xl font-bold text-slate-900">

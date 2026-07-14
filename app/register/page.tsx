@@ -65,8 +65,8 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center bg-[#f8fafc] px-4 py-16 font-sans text-slate-900">
-      <div className="w-full max-w-md bg-white p-8 sm:p-12 rounded-3xl border border-slate-200/80 shadow-xl flex flex-col gap-8">
+    <div className="min-h-screen flex flex-col justify-center items-center bg-[#f8fafc] px-0 sm:px-4 py-0 sm:py-16 font-sans text-slate-900">
+      <div className="w-full max-w-md bg-white p-6 sm:p-12 rounded-none sm:rounded-3xl border-x-0 border-y sm:border border-slate-200/80 shadow-none sm:shadow-xl flex flex-col justify-center min-h-screen sm:min-h-0 gap-8">
         <div className="text-center flex flex-col items-center gap-3 mb-1">
           <div className="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-2xs mb-1">
             <UserPlus className="w-7 h-7 stroke-[2.2]" />
