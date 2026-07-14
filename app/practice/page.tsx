@@ -13,7 +13,7 @@ export default function PracticePage() {
         fallback={
           <div className="w-full h-full flex items-center justify-center bg-white">
             <div className="flex flex-col items-center gap-3 animate-pulse">
-              <span className="text-4xl">✍️</span>
+              <div className="w-8 h-8 rounded-full border-4 border-indigo-600 border-t-transparent animate-spin" />
               <span className="text-sm font-bold text-slate-500">กำลังเปิดกระดานเขียนคำศัพท์เต็มหน้าจอ...</span>
             </div>
           </div>

@@ -92,7 +92,7 @@ model Collection {
   description   String       @db.Text
   category      String       @db.VarChar(100) // "TGAT1" or "A-Level"
   cefrLevel     String       @default("B2") @map("cefr_level") @db.VarChar(20)
-  icon          String       @default("📘") @db.VarChar(20)
+  icon          String       @default("BOOK") @db.VarChar(20)
   color         String       @default("from-blue-500/10 to-indigo-500/10 border-blue-200/80 hover:border-blue-400") @db.VarChar(200)
   badge         String       @default("TGAT1 68") @db.VarChar(100)
   badgeColor    String       @default("bg-blue-50 text-blue-700 border-blue-200") @db.VarChar(100)

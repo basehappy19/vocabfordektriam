@@ -76,8 +76,8 @@ export default function CollectionDetail({
       {/* Navbar */}
       <header className="sticky top-3 sm:top-4 z-40 w-full max-w-5xl mx-auto px-4">
         <nav className="flex items-center justify-between py-3 px-5 bg-white/80 backdrop-blur-md border border-slate-200/80 rounded-2xl shadow-sm">
-          <Link href="/" className="flex items-center gap-2 font-black text-slate-900 hover:text-indigo-600 transition-colors">
-            <span>⬅️ กลับหน้าเลือกคลังคำศัพท์</span>
+          <Link href="/" className="flex items-center gap-2 font-bold text-slate-700 hover:text-indigo-600 transition-colors text-sm">
+            <span>&larr; กลับหน้าเลือกคลังคำศัพท์</span>
           </Link>
           <div className="flex items-center gap-2 text-xs font-bold">
             {!isGuest && userName ? (
@@ -101,9 +101,9 @@ export default function CollectionDetail({
         <div className={`p-6 sm:p-8 rounded-3xl bg-gradient-to-br ${collection.color} bg-white border-2 shadow-sm flex flex-col gap-5`}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <span className="text-4xl sm:text-5xl p-3 bg-white/95 rounded-2xl shadow-sm border border-slate-100">
-                {collection.icon}
-              </span>
+              <div className="p-3 bg-white/95 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center font-bold text-indigo-600 text-lg">
+                {collection.badge.split(" ")[0] || "COL"}
+              </div>
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <span className={`px-3 py-0.5 rounded-full text-xs font-bold border ${collection.badgeColor}`}>
