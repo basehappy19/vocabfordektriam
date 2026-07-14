@@ -287,6 +287,7 @@ export default function PracticeSession({
 
   // Local progress tracking for guest mode
   const [guestCompletedCount, setGuestCompletedCount] = useState(0);
+  const [isMounted, setIsMounted] = useState(false);
 
   // iPad / Drawing Device Detection vs PC/Mobile Typing Detection
   const [isDrawingDevice, setIsDrawingDevice] = useState(false);
@@ -309,33 +310,35 @@ export default function PracticeSession({
     const list = answersToSave || recordedAnswers;
     if (list.length === 0) return;
     setShowSummaryModal(true);
+    if (mode !== "AUTHENTICATED" || isSavingSummary || savedSessionSummary !== null) return;
+
     setIsSavingSummary(true);
     try {
-      const durationSeconds = Math.round((Date.now() - sessionStartTime) / 1000);
       const res = await fetch("/api/vocab/session-summary", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           collectionId: selectedCollectionId || null,
-          category: selectedCategory || "GENERAL",
-          durationSeconds,
+          category: selectedCategory || null,
           answers: list,
+          startedAt: new Date(sessionStartTime).toISOString(),
+          endedAt: new Date().toISOString(),
         }),
       });
+
       if (res.ok) {
         const data = await res.json();
-        if (data.status === "success") {
-          setSavedSessionSummary(data.sessionSummary);
-        }
+        setSavedSessionSummary(data.summary);
       }
     } catch (err) {
       console.error("Error saving practice session summary:", err);
     } finally {
       setIsSavingSummary(false);
     }
-  }, [recordedAnswers, selectedCollectionId, selectedCategory, sessionStartTime]);
+  }, [recordedAnswers, selectedCollectionId, selectedCategory, sessionStartTime, mode, isSavingSummary, savedSessionSummary]);
 
   useEffect(() => {
+    setIsMounted(true);
     const checkDevice = () => {
       const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
       const isMacWithTouch = navigator.userAgent.includes("Macintosh") && navigator.maxTouchPoints > 1;
@@ -754,10 +757,10 @@ export default function PracticeSession({
   const totalWords = vocab?.meta?.progress?.totalWords || 1;
   const dbCompleted = vocab?.meta?.progress?.completedWords || 0;
   const activeColKey = selectedCollectionId || vocab?.collectionId || selectedCategory || "";
-  const guestProgressMapIds = typeof window !== "undefined" && activeColKey ? getCompletedWordIds(activeColKey) : [];
+  const guestStorageCount = isMounted && activeColKey ? getCompletedWordIds(activeColKey).length : 0;
   const completedWords = mode === "AUTHENTICATED"
     ? dbCompleted
-    : (activeColKey && guestProgressMapIds.length > 0 ? guestProgressMapIds.length : guestCompletedCount);
+    : (isMounted ? Math.max(guestStorageCount, guestCompletedCount) : (dbCompleted || guestCompletedCount));
   const currentWordNumber = vocab?.meta?.progress?.wordIndex || (historyIndex >= 0 ? Math.min(totalWords, historyIndex + 1) : 1);
   const completedPercent = Math.min(100, Math.round((completedWords / totalWords) * 100));
 
