@@ -1,0 +1,397 @@
+"use client";
+
+import React, { useState, useEffect } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { User, Mail, Lock, ArrowLeft, Loader2, CheckCircle2, AlertCircle, ShieldCheck, Calendar } from "lucide-react";
+
+interface UserProfile {
+  id: string;
+  name: string | null;
+  email: string | null;
+  createdAt: string;
+}
+
+export default function ProfilePage() {
+  const router = useRouter();
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Email form state
+  const [email, setEmail] = useState("");
+  const [savingEmail, setSavingEmail] = useState(false);
+  const [emailMsg, setEmailMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // Password form state
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [passwordMsg, setPasswordMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const fetchProfile = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/profile");
+      if (res.ok) {
+        const data = await res.json();
+        setUser(data.user);
+        setEmail(data.user.email || "");
+      } else {
+        router.push("/login");
+      }
+    } catch (err) {
+      console.error("Failed to fetch profile", err);
+      router.push("/login");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingEmail(true);
+    setEmailMsg(null);
+
+    try {
+      const res = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setEmailMsg({ type: "error", text: data.error || "ไม่สามารถบันทึกอีเมลได้" });
+      } else {
+        setUser(data.user);
+        setEmailMsg({ type: "success", text: "บันทึกอีเมลเรียบร้อยแล้ว" });
+      }
+    } catch (err) {
+      setEmailMsg({ type: "error", text: "เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง" });
+    } finally {
+      setSavingEmail(false);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingPassword(true);
+    setPasswordMsg(null);
+
+    if (newPassword.length < 6) {
+      setPasswordMsg({ type: "error", text: "รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 6 ตัวอักษร" });
+      setSavingPassword(false);
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordMsg({ type: "error", text: "รหัสผ่านใหม่และการยืนยันรหัสผ่านไม่ตรงกัน" });
+      setSavingPassword(false);
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentPassword,
+          newPassword,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setPasswordMsg({ type: "error", text: data.error || "ไม่สามารถเปลี่ยนรหัสผ่านได้" });
+      } else {
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+        setPasswordMsg({ type: "success", text: "เปลี่ยนรหัสผ่านเรียบร้อยแล้ว" });
+      }
+    } catch (err) {
+      setPasswordMsg({ type: "error", text: "เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง" });
+    } finally {
+      setSavingPassword(false);
+    }
+  };
+
+  const formatThaiDate = (dateString?: string) => {
+    if (!dateString) return "-";
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString("th-TH", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    } catch {
+      return dateString;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col justify-center items-center bg-[#f8fafc] p-6 text-slate-600 font-sans">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-600 mb-3" />
+        <span className="text-sm font-bold">กำลังโหลดข้อมูลส่วนตัว...</span>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
+  return (
+    <div className="min-h-screen bg-[#f8fafc] py-10 px-4 sm:px-6 lg:px-8 font-sans text-slate-900">
+      <div className="max-w-3xl mx-auto flex flex-col gap-8">
+        {/* Navigation & Header */}
+        <div className="flex flex-col gap-4">
+          <div>
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>กลับไปหน้าหลัก</span>
+            </Link>
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 sm:p-8 bg-white rounded-3xl border border-slate-200/80 shadow-sm">
+            <div className="flex items-center gap-4 sm:gap-5">
+              <div className="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
+                <User className="w-7 h-7 stroke-[2.2]" />
+              </div>
+              <div>
+                <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">
+                  ข้อมูลส่วนตัวและการตั้งค่า
+                </h1>
+                <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
+                  จัดการอีเมลและความปลอดภัยของบัญชีผู้ใช้
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-600 self-start sm:self-center">
+              <Calendar className="w-4 h-4 text-slate-400" />
+              <span>สมัครเมื่อ {formatThaiDate(user.createdAt)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 1: Basic Information (Username immutable, Email editable) */}
+        <div className="bg-white p-6 sm:p-10 rounded-3xl border border-slate-200/80 shadow-sm flex flex-col gap-6">
+          <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-base sm:text-lg font-bold text-slate-900">
+                ข้อมูลบัญชี
+              </h2>
+              <p className="text-xs text-slate-500 font-medium">
+                ชื่อผู้ใช้ระบบและอีเมลสำหรับรับข่าวสารหรือกู้คืนบัญชี
+              </p>
+            </div>
+          </div>
+
+          {emailMsg && (
+            <div
+              className={`p-4 rounded-2xl border text-xs sm:text-sm font-bold flex items-center gap-3 animate-fade-in ${
+                emailMsg.type === "success"
+                  ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                  : "bg-rose-50 border-rose-200 text-rose-700"
+              }`}
+            >
+              {emailMsg.type === "success" ? (
+                <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-600" />
+              ) : (
+                <AlertCircle className="w-5 h-5 shrink-0 text-rose-600" />
+              )}
+              <span>{emailMsg.text}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleSaveEmail} className="flex flex-col gap-6">
+            {/* Username Field - READONLY / IMMUTABLE */}
+            <div className="flex flex-col gap-2.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs sm:text-sm font-bold text-slate-700 tracking-wide">
+                  ชื่อผู้ใช้
+                </label>
+                <span className="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 text-[11px] font-bold flex items-center gap-1.5">
+                  <Lock className="w-3 h-3 text-amber-600" />
+                  <span>ไม่สามารถแก้ไขได้</span>
+                </span>
+              </div>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={user.name || ""}
+                  readOnly
+                  disabled
+                  className="w-full bg-slate-100/90 border border-slate-200/80 rounded-2xl px-4 py-4 pl-12 text-sm sm:text-base font-bold text-slate-600 cursor-not-allowed select-none"
+                />
+                <User className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+              </div>
+              <p className="text-xs text-slate-400 font-medium pl-1">
+                * ชื่อผู้ใช้เป็นตัวระบุหลักในระบบสถิติและการท่องศัพท์ จึงไม่สามารถเปลี่ยนแปลงได้
+              </p>
+            </div>
+
+            {/* Email Field - EDITABLE */}
+            <div className="flex flex-col gap-2.5">
+              <label className="text-xs sm:text-sm font-bold text-slate-700 tracking-wide">
+                อีเมล
+              </label>
+              <div className="relative">
+                <input
+                  type="email"
+                  placeholder="เช่น somchai@example.com (ไม่บังคับ)"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full bg-slate-50/80 border border-slate-200 rounded-2xl px-4 py-4 pl-12 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white font-medium transition-all"
+                />
+                <Mail className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+              </div>
+              <p className="text-xs text-slate-400 font-medium pl-1">
+                * ระบุอีเมลเพื่อความปลอดภัย หรือใช้สำหรับการแจ้งเตือนและการตั้งค่าในอนาคต
+              </p>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="submit"
+                disabled={savingEmail || email.trim() === (user.email || "")}
+                className="w-full sm:w-auto px-6 py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-extrabold text-sm sm:text-base rounded-2xl shadow-lg shadow-indigo-600/20 transition-all flex items-center justify-center gap-2 active:scale-98 cursor-pointer"
+              >
+                {savingEmail ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>กำลังบันทึก...</span>
+                  </>
+                ) : (
+                  <span>บันทึกข้อมูลอีเมล</span>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {/* Card 2: Password Change */}
+        <div className="bg-white p-6 sm:p-10 rounded-3xl border border-slate-200/80 shadow-sm flex flex-col gap-6">
+          <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
+            <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700 shrink-0">
+              <Lock className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-base sm:text-lg font-bold text-slate-900">
+                เปลี่ยนรหัสผ่าน
+              </h2>
+              <p className="text-xs text-slate-500 font-medium">
+                เพื่อความปลอดภัย กรุณากรอกรหัสผ่านปัจจุบันก่อนตั้งรหัสผ่านใหม่
+              </p>
+            </div>
+          </div>
+
+          {passwordMsg && (
+            <div
+              className={`p-4 rounded-2xl border text-xs sm:text-sm font-bold flex items-center gap-3 animate-fade-in ${
+                passwordMsg.type === "success"
+                  ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                  : "bg-rose-50 border-rose-200 text-rose-700"
+              }`}
+            >
+              {passwordMsg.type === "success" ? (
+                <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-600" />
+              ) : (
+                <AlertCircle className="w-5 h-5 shrink-0 text-rose-600" />
+              )}
+              <span>{passwordMsg.text}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleChangePassword} className="flex flex-col gap-6">
+            <div className="flex flex-col gap-2.5">
+              <label className="text-xs sm:text-sm font-bold text-slate-700 tracking-wide">
+                รหัสผ่านปัจจุบัน
+              </label>
+              <div className="relative">
+                <input
+                  type="password"
+                  required
+                  placeholder="••••••••"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className="w-full bg-slate-50/80 border border-slate-200 rounded-2xl px-4 py-4 pl-12 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white font-medium transition-all"
+                />
+                <Lock className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-6">
+              <div className="flex-1 flex flex-col gap-2.5">
+                <label className="text-xs sm:text-sm font-bold text-slate-700 tracking-wide">
+                  ตั้งรหัสผ่านใหม่อย่างน้อย 6 ตัวอักษร
+                </label>
+                <div className="relative">
+                  <input
+                    type="password"
+                    required
+                    minLength={6}
+                    placeholder="••••••••"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="w-full bg-slate-50/80 border border-slate-200 rounded-2xl px-4 py-4 pl-12 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white font-medium transition-all"
+                  />
+                  <Lock className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+                </div>
+              </div>
+
+              <div className="flex-1 flex flex-col gap-2.5">
+                <label className="text-xs sm:text-sm font-bold text-slate-700 tracking-wide">
+                  ยืนยันรหัสผ่านใหม่
+                </label>
+                <div className="relative">
+                  <input
+                    type="password"
+                    required
+                    minLength={6}
+                    placeholder="••••••••"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full bg-slate-50/80 border border-slate-200 rounded-2xl px-4 py-4 pl-12 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white font-medium transition-all"
+                  />
+                  <Lock className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="submit"
+                disabled={savingPassword || !currentPassword || !newPassword}
+                className="w-full sm:w-auto px-6 py-3.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-extrabold text-sm sm:text-base rounded-2xl shadow-lg shadow-slate-900/10 transition-all flex items-center justify-center gap-2 active:scale-98 cursor-pointer"
+              >
+                {savingPassword ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>กำลังเปลี่ยนรหัสผ่าน...</span>
+                  </>
+                ) : (
+                  <span>เปลี่ยนรหัสผ่านทันที</span>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}

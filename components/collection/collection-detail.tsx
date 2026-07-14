@@ -137,12 +137,6 @@ export default function CollectionDetail({
             <span>กลับหน้าเลือกคลังคำศัพท์</span>
           </Link>
           <div className="flex items-center gap-2 text-xs font-semibold">
-            {!isGuest && userName ? (
-              <span className="px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl flex items-center gap-1.5 shadow-2xs">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span>{userName}</span>
-              </span>
-            ) : null}
             <AuthNavButtons user={!isGuest ? { name: userName } : null} />
           </div>
         </nav>

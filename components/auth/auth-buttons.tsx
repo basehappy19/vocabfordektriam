@@ -9,10 +9,14 @@ export function AuthNavButtons({ user }: { user?: { name?: string | null; email?
   if (user) {
     return (
       <div className="flex items-center gap-2">
-        <span className="px-3 py-1.5 bg-slate-100 text-slate-700 border border-slate-200/80 rounded-xl flex items-center gap-1.5 font-bold text-xs">
+        <Link
+          href="/profile"
+          className="px-3.5 py-1.5 bg-indigo-50 hover:bg-indigo-100/80 text-indigo-700 border border-indigo-200/80 rounded-xl flex items-center gap-1.5 font-bold text-xs transition-all shadow-2xs cursor-pointer"
+          title="ดูและจัดการข้อมูลส่วนตัว"
+        >
           <User className="w-3.5 h-3.5 text-indigo-600" />
           <span>{user.name || "บัญชีผู้ใช้"}</span>
-        </span>
+        </Link>
         <button
           onClick={() => signOut({ callbackUrl: "/" })}
           className="cursor-pointer px-3 py-1.5 bg-white hover:bg-rose-50 hover:text-rose-600 text-slate-600 border border-slate-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
