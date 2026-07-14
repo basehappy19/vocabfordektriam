@@ -714,37 +714,33 @@ export default function PracticeSession({
     fetchNextVocab(false);
   }, [historyIndex, history, syncCurrentToHistory, fetchNextVocab, vocab, recordedAnswers, openAndSaveSummary]);
 
-  const handleSrsReview = async (rating: "again" | "hard" | "good" | "easy") => {
-    if (!vocab) return;
-    recordGuestWordCompletion(vocab.id, selectedCollectionId || vocab.collectionId, vocab.category);
+  const handleNextWithReview = async () => {
+    if (vocab && historyIndex >= history.length - 1) {
+      recordGuestWordCompletion(vocab.id, selectedCollectionId || vocab.collectionId, vocab.category);
 
-    if (mode === "GUEST") {
-      incrementGuestCountSafely();
-      handleNext();
-      return;
-    }
-
-    setIsReviewing(true);
-    try {
-      const res = await fetch("/api/vocab/review", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          vocabId: vocab.id,
-          rating,
-          durationSeconds: 30,
-        }),
-      });
-
-      if (!res.ok) {
-        console.error("Failed to update SRS progress");
+      if (mode === "GUEST") {
+        incrementGuestCountSafely();
+      } else if (mode === "AUTHENTICATED") {
+        const rating = answerStatus === "CORRECT" ? "good" : "again";
+        setIsReviewing(true);
+        try {
+          await fetch("/api/vocab/review", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              vocabId: vocab.id,
+              rating,
+              durationSeconds: 15,
+            }),
+          });
+        } catch (err) {
+          console.error(err);
+        } finally {
+          setIsReviewing(false);
+        }
       }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsReviewing(false);
-      handleNext();
     }
+    handleNext();
   };
 
   const recognizeHandwritingFromDataUrl = async (dataUrl: string): Promise<string> => {
@@ -1097,8 +1093,8 @@ export default function PracticeSession({
       ) : vocab ? (
         <>
           {/* Top Universal Progress Navbar */}
-          <div className="absolute top-3 sm:top-4 left-3 sm:left-4 right-3 sm:right-4 z-30 pointer-events-none flex justify-center">
-            <div className="w-full max-w-6xl pointer-events-auto bg-white/95 backdrop-blur-md px-4 sm:px-6 py-3 sm:py-3.5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-6">
+          <div className="absolute top-0 sm:top-4 left-0 sm:left-4 right-0 sm:right-4 z-30 pointer-events-none flex justify-center">
+            <div className="w-full max-w-6xl pointer-events-auto bg-white/95 backdrop-blur-md px-3 sm:px-6 py-2.5 sm:py-3.5 rounded-none sm:rounded-2xl border-b sm:border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-6">
               {/* Left Group: Back Button + Collection Title & CEFR Badge */}
               <div className="w-full sm:w-auto flex items-center justify-between sm:justify-start gap-3 shrink-0 min-w-0">
                 <Link
@@ -1181,14 +1177,14 @@ export default function PracticeSession({
               - Input: Standard text input (Scribble on iPad / keyboard on PC/Mobile)
               ========================================================================= */}
           <div
-            className="absolute inset-0 w-full h-full flex flex-col justify-between p-6 sm:p-10 z-10 overflow-y-auto pt-24 sm:pt-28"
+            className="absolute inset-0 w-full h-full flex flex-col justify-between p-0 sm:p-10 z-10 overflow-y-auto pt-20 sm:pt-28"
             style={{
               backgroundColor: "#ffffff",
               backgroundImage: `linear-gradient(to right, #e2e8f0 1px, transparent 1px), linear-gradient(to bottom, #e2e8f0 1px, transparent 1px)`,
               backgroundSize: "32px 32px",
             }}
           >
-            <div className="w-full max-w-3xl mx-auto my-auto flex flex-col items-center justify-center gap-8 py-4">
+            <div className="w-full max-w-3xl mx-auto my-auto flex flex-col items-center justify-center gap-8 py-4 px-4 sm:px-0">
               {!showAnswer && (
                 <div className="text-center flex flex-col items-center gap-2.5">
                   <div className="inline-flex items-center justify-center px-4 py-1.5 rounded-full bg-indigo-50 border border-indigo-200/80 text-indigo-700 text-xs font-bold tracking-wide shadow-2xs">
@@ -1356,10 +1352,10 @@ export default function PracticeSession({
                 </div>
               ) : (
                 <div
-                  className={`pointer-events-auto w-full p-6 rounded-3xl border shadow-xl flex flex-col gap-4 max-h-[75vh] overflow-y-auto transition-all duration-300 ${
+                  className={`pointer-events-auto w-full p-4 sm:p-6 rounded-none sm:rounded-3xl border-0 sm:border shadow-none sm:shadow-xl flex flex-col gap-4 max-h-[88vh] sm:max-h-[75vh] overflow-y-auto transition-all duration-300 ${
                     answerStatus === "CORRECT"
-                      ? "bg-emerald-50/90 backdrop-blur-xl border-emerald-400"
-                      : "bg-white/95 backdrop-blur-xl border-slate-200"
+                      ? "bg-emerald-50/90 backdrop-blur-xl sm:border-emerald-400"
+                      : "bg-white/95 backdrop-blur-xl sm:border-slate-200"
                   }`}
                 >
                   <div className="flex items-center justify-between pb-1 border-b border-slate-200/60">
@@ -1368,12 +1364,12 @@ export default function PracticeSession({
                     </span>
                   </div>
                   {answerStatus === "CORRECT" && (
-                    <div className="w-full p-4 bg-emerald-600 text-white rounded-2xl shadow-xs border border-emerald-500 flex items-center justify-between">
+                    <div className="w-full p-4 bg-emerald-600 text-white rounded-none sm:rounded-2xl shadow-xs border-0 sm:border sm:border-emerald-500 flex items-center justify-between">
                       <h3 className="text-base sm:text-lg font-bold">ถูกต้อง</h3>
                     </div>
                   )}
                   {answerStatus === "WRONG" && (
-                    <div className="w-full p-4 bg-rose-600 text-white rounded-2xl shadow-xs border border-rose-500 flex items-center gap-3">
+                    <div className="w-full p-4 bg-rose-600 text-white rounded-none sm:rounded-2xl shadow-xs border-0 sm:border sm:border-rose-500 flex items-center gap-3">
                       <div>
                         <h3 className="text-base sm:text-lg font-bold">ยังไม่ถูกต้อง</h3>
                         {typedInput && (
@@ -1411,19 +1407,7 @@ export default function PracticeSession({
                     const ex = getCleanWordExample(vocab.word, vocab.exampleSentence, vocab.exampleTarget);
                     return ex.exampleSentence ? (
                       <div className="flex flex-col gap-2 pt-1 w-full text-left">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                            <span>💡 ประโยคตัวอย่างเตรียมสอบ (Example Sentence)</span>
-                            {vocab.meta?.wasAiGenerated ? (
-                              <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold">
-                                🤖 AI Generated Now (Lazy-Cached to DB)
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] font-bold">
-                                ⚡ Served Direct from DB (No AI Cost)
-                              </span>
-                            )}
-                          </span>
+                        <div className="flex justify-end pb-0.5">
                           <TTSButton
                             text={ex.exampleSentence}
                             lang="en-US"
@@ -1431,7 +1415,7 @@ export default function PracticeSession({
                             label="ฟังประโยค"
                           />
                         </div>
-                        <blockquote className="p-4 bg-white rounded-xl border-l-4 border-indigo-500 shadow-xs flex flex-col gap-1.5 text-left">
+                        <blockquote className="p-4 bg-white rounded-none sm:rounded-xl border-l-4 border-indigo-500 shadow-xs flex flex-col gap-1.5 text-left">
                           <p className="text-base sm:text-lg font-medium text-slate-800 italic">
                             &ldquo;{renderFormattedSentence(ex.exampleSentence)}&rdquo;
                           </p>
@@ -1445,86 +1429,27 @@ export default function PracticeSession({
                     ) : null;
                   })()}
 
-                  <div className="flex flex-col gap-3 pt-2 border-t border-slate-200/80">
-                    {mode === "AUTHENTICATED" ? (
-                      <>
-                        <span className="text-xs font-bold text-center text-slate-500">
-                          เลือกระดับความจำเพื่อกำหนดรอบทบทวนถัดไป:
-                        </span>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                          <button
-                            onClick={() => handleSrsReview("again")}
-                            disabled={isReviewing}
-                            className="cursor-pointer py-3 px-2 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-900 font-bold border border-rose-200 text-xs sm:text-sm transition-all"
-                          >
-                            จำไม่ได้
-                          </button>
-                          <button
-                            onClick={() => handleSrsReview("hard")}
-                            disabled={isReviewing}
-                            className="cursor-pointer py-3 px-2 rounded-2xl bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold border border-amber-200 text-xs sm:text-sm transition-all"
-                          >
-                            จำยาก
-                          </button>
-                          <button
-                            onClick={() => handleSrsReview("good")}
-                            disabled={isReviewing}
-                            className="cursor-pointer py-3 px-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-900 font-bold border border-blue-200 text-xs sm:text-sm transition-all"
-                          >
-                            จำได้ดี
-                          </button>
-                          <button
-                            onClick={() => handleSrsReview("easy")}
-                            disabled={isReviewing}
-                            className="cursor-pointer py-3 px-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold border border-emerald-200 text-xs sm:text-sm transition-all"
-                          >
-                            ง่ายมาก
-                          </button>
-                        </div>
-                      </>
-                    ) : (
-                        <div className="flex items-center gap-3 w-full">
-                          <button
-                            type="button"
-                            onClick={handlePrev}
-                            disabled={historyIndex <= 0}
-                            className="cursor-pointer px-5 py-4 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-2xl text-base disabled:opacity-40 disabled:cursor-not-allowed transition-all border border-slate-200 shadow-xs"
-                          >
-                            ย้อนกลับ
-                          </button>
-                          <button
-                            onClick={handleNext}
-                            className="cursor-pointer flex-1 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl shadow-xs transition-all text-center text-base"
-                          >
-                            {(currentWordNumber >= totalWords || playedWordsCount >= totalWords) && historyIndex >= history.length - 1
-                              ? "ดูสรุปผล"
-                              : "คำศัพท์ถัดไป"}
-                          </button>
-                        </div>
-                      )}
-                      {mode === "AUTHENTICATED" && (
-                        <div className="flex flex-col sm:flex-row items-center gap-3 pt-1 w-full">
-                          {(currentWordNumber >= totalWords || playedWordsCount >= totalWords) && historyIndex >= history.length - 1 && (
-                            <button
-                              type="button"
-                              onClick={handleNext}
-                              className="cursor-pointer flex-1 py-3 px-5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm shadow-xs transition-all text-center"
-                            >
-                              ดูสรุปผล
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={handlePrev}
-                            disabled={historyIndex <= 0}
-                            className="cursor-pointer px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all border border-slate-200 shadow-xs"
-                          >
-                            ย้อนกลับไปคำก่อนหน้า
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                  <div className="flex items-center gap-3 pt-3 border-t border-slate-200/80 w-full">
+                    <button
+                      type="button"
+                      onClick={handlePrev}
+                      disabled={historyIndex <= 0 || isReviewing}
+                      className="cursor-pointer px-5 py-4 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-none sm:rounded-2xl text-base disabled:opacity-40 disabled:cursor-not-allowed transition-all border border-slate-200 shadow-xs"
+                    >
+                      ย้อนกลับ
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleNextWithReview}
+                      disabled={isReviewing}
+                      className="cursor-pointer flex-1 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-none sm:rounded-2xl shadow-xs transition-all text-center text-base disabled:opacity-60"
+                    >
+                      {(currentWordNumber >= totalWords || playedWordsCount >= totalWords) && historyIndex >= history.length - 1
+                        ? "ดูสรุปผล"
+                        : "คำศัพท์ถัดไป"}
+                    </button>
                   </div>
+                </div>
                 )}
               </div>
             </div>
