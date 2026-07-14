@@ -163,22 +163,13 @@ export default function CollectionDetail({
           </div>
 
           {/* Progress Tracking Box Card */}
-          <div className="bg-slate-50/90 p-5 sm:p-6 rounded-2xl border border-slate-200/80 shadow-2xs flex flex-col gap-3.5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-sm sm:text-base font-semibold text-slate-800">
-              <div className="flex items-center gap-2">
-                <span>ความคืบหน้าของชุดคำศัพท์นี้:</span>
-                <span className="text-indigo-600 font-bold">
-                  {completedCount} / {totalWords} คำ
-                </span>
-                <span className="text-xs font-semibold text-slate-500">({progressPercent}%)</span>
-              </div>
-              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-white text-slate-700 border border-slate-200/80 self-start sm:self-auto shadow-2xs">
-                {progressPercent === 100
-                  ? "เสร็จสิ้นครบทุกคำ 100%"
-                  : progressPercent >= 50
-                  ? "ความคืบหน้าระดับดีเยี่ยม"
-                  : "กำลังเริ่มต้นฝึกฝน"}
+          <div className="bg-slate-50/90 p-5 sm:p-6 rounded-2xl border border-slate-200/80 shadow-2xs flex flex-col gap-3">
+            <div className="flex items-center gap-2 text-sm sm:text-base font-semibold text-slate-800">
+              <span>ความคืบหน้าของชุดคำศัพท์นี้:</span>
+              <span className="text-indigo-600 font-bold">
+                {completedCount} / {totalWords} คำ
               </span>
+              <span className="text-xs font-semibold text-slate-500">({progressPercent}%)</span>
             </div>
 
             {/* Progress Bar */}
@@ -187,14 +178,6 @@ export default function CollectionDetail({
                 className="h-full bg-indigo-600 rounded-full transition-all duration-500 shadow-sm"
                 style={{ width: `${progressPercent}%` }}
               />
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 pt-0.5">
-              <span>
-                {isGuest
-                  ? "จัดเก็บข้อมูลอัตโนมัติในเครื่อง เข้าสู่ระบบเพื่อซิงค์ข้อมูลบนคลาวด์"
-                  : "ซิงค์ข้อมูลกับคลาวด์เรียบร้อยแล้ว"}
-              </span>
             </div>
           </div>
 
