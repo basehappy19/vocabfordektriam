@@ -466,6 +466,7 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
 
   const handleNext = useCallback(() => {
     syncCurrentToHistory();
+    let currentAnswers = [...recordedAnswers];
     if (vocab && !recordedAnswers.some((a) => a.vocabId === vocab.id)) {
       const skipRecord: SessionRecordedAnswer = {
         vocabId: vocab.id,
@@ -475,7 +476,14 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
         correctAnswerText: `${vocab.word} = ${vocab.meaning}`,
         isCorrect: false,
       };
-      setRecordedAnswers((prev) => [...prev, skipRecord]);
+      currentAnswers = [...recordedAnswers, skipRecord];
+      setRecordedAnswers(currentAnswers);
+    }
+
+    const totalTarget = vocab?.meta?.progress?.totalWords || 15;
+    if (currentAnswers.length >= totalTarget) {
+      openAndSaveSummary(currentAnswers);
+      return;
     }
 
     if (historyIndex < history.length - 1) {
@@ -495,7 +503,7 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
       }
     }
     fetchNextVocab();
-  }, [historyIndex, history, syncCurrentToHistory, fetchNextVocab, vocab, recordedAnswers]);
+  }, [historyIndex, history, syncCurrentToHistory, fetchNextVocab, vocab, recordedAnswers, openAndSaveSummary]);
 
   const handleSrsReview = async (rating: "again" | "hard" | "good" | "easy") => {
     if (!vocab) return;
@@ -620,28 +628,14 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
         vocabId: vocab.id,
         word: vocab.word,
         meaning: vocab.meaning,
-        userTypedInput: textToCheck || (isDrawingDevice && hasUserDrawn ? "(วาดจากลายมือแต่ไม่ถูกต้อง)" : "(กดดูเฉลย)"),
+        userTypedInput: textToCheck || (isDrawingDevice && hasUserDrawn ? "(วาดจากลายมือแต่ไม่ถูกต้อง)" : "(ยังไม่ได้ระบุคำตอบ)"),
         correctAnswerText: `${vocab.word} = ${vocab.meaning}`,
         isCorrect,
       };
 
       setRecordedAnswers((prev) => {
         if (prev.some((a) => a.vocabId === vocab.id)) return prev;
-        const nextAnswers = [...prev, answerRecord];
-
-        // "ถ้ากดดูเฉลยแล้วผิดถือว่าเสียคำนั้นไปเลย และไปคำต่อไป" -> 2.5s timer so they can see the correct answer briefly before auto-advancing
-        setTimeout(() => {
-          if (
-            nextAnswers.length >= 15 ||
-            (vocab.meta?.progress?.totalWords && nextAnswers.length >= vocab.meta.progress.totalWords)
-          ) {
-            openAndSaveSummary(nextAnswers);
-          } else {
-            handleNext();
-          }
-        }, isCorrect ? 1500 : 2500);
-
-        return nextAnswers;
+        return [...prev, answerRecord];
       });
     }
   };
@@ -717,25 +711,151 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
     });
   };
 
+  if (showSummaryModal) {
+    const total = recordedAnswers.length;
+    const correct = recordedAnswers.filter((a) => a.isCorrect).length;
+    const wrong = total - correct;
+    const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
+
+    return (
+      <div className="absolute inset-0 w-full h-full overflow-y-auto bg-[#f8fafc] text-slate-900 font-sans p-4 sm:p-8 md:p-12 z-50">
+        <div className="max-w-4xl mx-auto bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden flex flex-col my-auto">
+          {/* Header */}
+          <div className="p-6 sm:p-8 border-b border-slate-200 bg-slate-900 text-white flex flex-col gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-indigo-400">
+              สรุปผลการฝึกซ้อมรอบนี้
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-extrabold">ผลลัพธ์การฝึกเขียนคำศัพท์</h2>
+            <p className="text-slate-300 text-xs sm:text-sm">
+              ระบบได้ทำการสรุปคำศัพท์ที่คุณฝึกซ้อมเรียบร้อยแล้ว
+            </p>
+          </div>
+
+          {/* Body */}
+          <div className="p-6 sm:p-8 flex flex-col gap-6">
+            {isSavingSummary ? (
+              <div className="p-4 bg-indigo-50/60 border border-indigo-200 rounded-2xl flex items-center gap-3 text-indigo-900 font-bold text-sm">
+                <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin shrink-0" />
+                <span>กำลังบันทึกสรุปผลการฝึกซ้อม...</span>
+              </div>
+            ) : savedSessionSummary ? (
+              <div className="p-4 bg-emerald-50/60 border border-emerald-200 rounded-2xl flex items-center gap-3 text-emerald-900 font-bold text-sm">
+                <span>บันทึกผลการฝึกซ้อมเรียบร้อยแล้ว</span>
+              </div>
+            ) : null}
+
+            {/* Stats Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+              <div className="p-4.5 bg-slate-50 border border-slate-200 rounded-2xl text-center">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">คำศัพท์ทั้งหมด</span>
+                <p className="text-3xl font-extrabold text-slate-900 mt-1">{total} <span className="text-sm font-bold text-slate-500">คำ</span></p>
+              </div>
+              <div className="p-4.5 bg-emerald-50/60 border border-emerald-200 rounded-2xl text-center">
+                <span className="text-xs font-bold text-emerald-700 uppercase tracking-wide">ตอบถูกต้อง</span>
+                <p className="text-3xl font-extrabold text-emerald-600 mt-1">{correct} <span className="text-sm font-bold text-emerald-700">คำ</span></p>
+              </div>
+              <div className="p-4.5 bg-rose-50/60 border border-rose-200 rounded-2xl text-center">
+                <span className="text-xs font-bold text-rose-700 uppercase tracking-wide">เสียไป/ผิดพลาด</span>
+                <p className="text-3xl font-extrabold text-rose-600 mt-1">{wrong} <span className="text-sm font-bold text-rose-700">คำ</span></p>
+              </div>
+              <div className="p-4.5 bg-indigo-50/60 border border-indigo-200 rounded-2xl text-center">
+                <span className="text-xs font-bold text-indigo-700 uppercase tracking-wide">ความแม่นยำ</span>
+                <p className="text-3xl font-extrabold text-indigo-600 mt-1">{pct}%</p>
+              </div>
+            </div>
+
+            {/* Detailed Words Table */}
+            <div>
+              <h3 className="text-base font-extrabold text-slate-900 mb-3.5">
+                รายละเอียดคำศัพท์แต่ละข้อ (เขียนว่าอะไร • ถูกต้องเขียนอย่างไร)
+              </h3>
+              <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs sm:text-sm">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold">
+                        <th className="p-3.5 w-14 text-center">ลำดับ</th>
+                        <th className="p-3.5">คำศัพท์</th>
+                        <th className="p-3.5 w-24 text-center">ผลลัพธ์</th>
+                        <th className="p-3.5">สิ่งที่คุณเขียน / ตอบ</th>
+                        <th className="p-3.5">เฉลยถูกต้องเขียนอย่างไร</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {recordedAnswers.map((item, idx) => (
+                        <tr key={idx} className={item.isCorrect ? "bg-emerald-50/30 hover:bg-emerald-50/60 transition-colors" : "bg-rose-50/30 hover:bg-rose-50/60 transition-colors"}>
+                          <td className="p-3.5 text-center font-mono font-bold text-slate-400">#{idx + 1}</td>
+                          <td className="p-3.5 font-bold text-slate-900">{item.word}</td>
+                          <td className="p-3.5 text-center">
+                            {item.isCorrect ? (
+                              <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 font-bold rounded-lg border border-emerald-200 text-xs">
+                                ถูกต้อง
+                              </span>
+                            ) : (
+                              <span className="px-2.5 py-1 bg-rose-100 text-rose-800 font-bold rounded-lg border border-rose-200 text-xs">
+                                เสียไป
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-3.5 font-semibold text-slate-800">
+                            {item.userTypedInput || (item.isCorrect ? item.word : "- ไม่ได้ระบุ -")}
+                          </td>
+                          <td className="p-3.5 font-bold text-indigo-700">
+                            {item.correctAnswerText}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="p-6 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <Link
+              href="/"
+              className="cursor-pointer w-full sm:w-auto px-6 py-3 rounded-xl bg-white hover:bg-slate-100 active:scale-[0.98] text-slate-700 font-bold text-xs sm:text-sm text-center border border-slate-200 transition-all"
+            >
+              กลับไปเลือกหมวดคำศัพท์
+            </Link>
+            <button
+              type="button"
+              onClick={() => {
+                setRecordedAnswers([]);
+                setShowSummaryModal(false);
+                setSavedSessionSummary(null);
+                fetchNextVocab();
+              }}
+              className="cursor-pointer w-full sm:w-auto px-8 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-bold text-xs sm:text-sm transition-all text-center shadow-xs"
+            >
+              ฝึกซ้อมรอบใหม่
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="absolute inset-0 w-full h-full overflow-hidden text-slate-900 font-sans bg-[#f8fafc]">
       {loading ? (
-        <div className="absolute inset-0 w-full h-full flex flex-col items-center justify-center p-12 bg-white gap-4 animate-pulse">
+        <div className="absolute inset-0 w-full h-full flex flex-col items-center justify-center p-12 bg-[#f8fafc] gap-4 animate-pulse">
           <div className="h-10 w-64 bg-slate-200 rounded-2xl" />
           <div className="h-6 w-48 bg-slate-100 rounded-xl" />
-          <span className="text-sm font-bold text-slate-400 mt-2">กำลังเตรียมคำศัพท์และแบบฝึกหัด...</span>
+          <span className="text-sm font-semibold text-slate-400 mt-2">กำลังเตรียมคำศัพท์และแบบฝึกหัด...</span>
         </div>
       ) : error ? (
-        <div className="absolute inset-0 w-full h-full flex items-center justify-center p-6 bg-slate-50">
-          <div className="p-8 bg-white border border-rose-200 rounded-3xl text-rose-800 text-center flex flex-col items-center gap-4 shadow-xl max-w-md">
-            <span className="text-4xl">⚠️</span>
-            <p className="font-bold text-lg">{error}</p>
+        <div className="absolute inset-0 w-full h-full flex items-center justify-center p-6 bg-[#f8fafc]">
+          <div className="p-8 bg-white border border-rose-200 rounded-3xl text-rose-800 text-center flex flex-col items-center gap-4 shadow-sm max-w-md">
+            <p className="font-bold text-base">{error}</p>
             <button
               type="button"
               onClick={fetchNextVocab}
-              className="px-6 py-3 bg-rose-600 text-white rounded-xl text-sm font-bold hover:bg-rose-700 shadow-md transition-colors"
+              className="cursor-pointer px-6 py-3 bg-rose-600 text-white rounded-xl text-xs font-bold hover:bg-rose-700 transition-colors"
             >
-              ลองใหม่อีกครั้ง (Retry)
+              ลองใหม่อีกครั้ง
             </button>
           </div>
         </div>
@@ -743,59 +863,46 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
         <>
           {/* Top Universal Progress Navbar */}
           <div className="absolute top-3 sm:top-4 left-3 sm:left-4 right-3 sm:right-4 z-30 pointer-events-none flex justify-center">
-            <div className="w-full max-w-5xl pointer-events-auto bg-white/95 backdrop-blur-md px-4 sm:px-6 py-3 rounded-2xl border border-slate-200/80 shadow-md flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="w-full max-w-5xl pointer-events-auto bg-white/95 backdrop-blur-md px-4 sm:px-6 py-3 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
               <div className="flex items-center gap-2.5 shrink-0">
                 <Link
-                  href="/"
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold text-slate-700 transition-all"
+                  href={vocab.collectionId ? `/collection/${vocab.collectionId}` : "/"}
+                  className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold text-slate-700 transition-all"
                 >
-                  <span>⬅️</span>
-                  <span>เปลี่ยน Collection</span>
+                  <span>กลับไปหน้ารวม</span>
                 </Link>
-                <span className="px-2.5 py-1 bg-indigo-50 text-indigo-700 rounded-full text-xs font-black border border-indigo-200">
+                <span className="px-2.5 py-1 bg-indigo-50 text-indigo-700 rounded-md text-xs font-bold border border-indigo-200/60">
                   {vocab.category}
                 </span>
                 {(() => {
                   const cefr = getCefrBadgeProps(vocab.cefrLevel || vocab.difficultyLevel);
                   return (
-                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-extrabold border ${cefr.colorClass}`}>
+                    <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold border ${cefr.colorClass}`}>
                       {cefr.badgeText}
                     </span>
                   );
                 })()}
               </div>
 
-              {/* Word Progress Bar (% & Counter) and Summary Button */}
+              {/* Word Progress Bar (% & Counter) */}
               <div className="w-full sm:w-auto flex items-center gap-3">
                 <div className="w-full sm:w-64 flex flex-col gap-1.5">
-                  <div className="flex items-center justify-between text-xs font-extrabold text-slate-700">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-700">
                     <span>
-                      🎯 คำที่ {currentWordNumber} / {totalWords}{" "}
+                      คำที่ {currentWordNumber} / {totalWords}{" "}
                       <span className="text-slate-400 font-normal text-[11px]">
                         (เหลือ {Math.max(0, totalWords - currentWordNumber)} คำ)
                       </span>
                     </span>
-                    <span className="text-indigo-600 font-mono font-black">{percent}%</span>
+                    <span className="text-indigo-600 font-mono font-bold">{percent}%</span>
                   </div>
-                  <div className="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden p-0.5 shadow-inner">
+                  <div className="w-full h-2 bg-slate-200/80 rounded-full overflow-hidden p-0 border border-slate-200">
                     <div
-                      className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-500 rounded-full transition-all duration-500 ease-out"
+                      className="h-full bg-indigo-600 rounded-full transition-all duration-500 ease-out"
                       style={{ width: `${percent}%` }}
                     />
                   </div>
                 </div>
-
-                {recordedAnswers.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => openAndSaveSummary()}
-                    className="pointer-events-auto px-3.5 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-black text-xs rounded-xl shadow-md flex items-center gap-1.5 shrink-0 transition-all cursor-pointer animate-pulse"
-                    title="สรุปผลและเก็บข้อมูลลง Database"
-                  >
-                    <span>🏆</span>
-                    <span>สรุปผล ({recordedAnswers.length} คำ)</span>
-                  </button>
-                )}
               </div>
             </div>
           </div>
@@ -834,27 +941,27 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
 
               <div className="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-20 pointer-events-none w-full max-w-2xl px-4 flex flex-col items-center justify-center gap-2">
                 {typedInput && !showAnswer && (
-                  <div className="pointer-events-auto bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-4 py-2 rounded-2xl border border-indigo-200 shadow-lg text-sm sm:text-base font-extrabold text-indigo-700 flex items-center gap-2 animate-fadeIn">
-                    <span>✏️ ระบบอ่านลายมือได้เป็น: <span className="underline decoration-indigo-400 font-black">{typedInput}</span></span>
+                  <div className="pointer-events-auto bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-4 py-2 rounded-2xl border border-indigo-200 shadow-md text-sm sm:text-base font-bold text-indigo-700 flex items-center gap-2 animate-fadeIn">
+                    <span>ระบบอ่านลายมือได้เป็น: <span className="underline decoration-indigo-400 font-extrabold">{typedInput}</span></span>
                     <button
                       type="button"
                       onClick={() => setTypedInput("")}
-                      className="text-xs bg-rose-50 text-rose-600 px-2 py-0.5 rounded-lg border border-rose-200 hover:bg-rose-100 font-bold ml-1 transition-colors"
+                      className="cursor-pointer text-xs bg-rose-50 text-rose-600 px-2.5 py-1 rounded-lg border border-rose-200 hover:bg-rose-100 font-bold ml-1 transition-colors"
                     >
-                      ลบ/เขียนใหม่
+                      ลบและเขียนใหม่
                     </button>
                   </div>
                 )}
 
                 {!showAnswer ? (
-                  <div className="pointer-events-auto flex items-center justify-center gap-2 sm:gap-2.5 w-full sm:w-auto bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-2.5 rounded-3xl border border-slate-200/80 shadow-2xl flex-wrap">
+                  <div className="pointer-events-auto flex items-center justify-center gap-2 sm:gap-2.5 w-full sm:w-auto bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-2.5 rounded-3xl border border-slate-200/80 shadow-xl flex-wrap">
                     <button
                       type="button"
                       onClick={handlePrev}
                       disabled={historyIndex <= 0}
-                      className="px-3.5 sm:px-4 py-3.5 rounded-2xl font-bold text-xs sm:text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all border border-slate-200 flex items-center gap-1 shrink-0"
+                      className="cursor-pointer px-4 py-3.5 rounded-2xl font-bold text-xs sm:text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all border border-slate-200"
                     >
-                      ⬅️ ย้อนกลับ
+                      ย้อนกลับ
                     </button>
 
                     {hasUserDrawn && !typedInput && (
@@ -862,9 +969,9 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                         type="button"
                         onClick={handleOcrConvertOnly}
                         disabled={isConvertingOcr}
-                        className="px-4 py-3.5 rounded-2xl font-extrabold text-xs sm:text-sm bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 transition-all flex items-center gap-1.5 shadow-xs shrink-0"
+                        className="cursor-pointer px-4 py-3.5 rounded-2xl font-bold text-xs sm:text-sm bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 transition-all flex items-center gap-1.5 shadow-xs shrink-0"
                       >
-                        {isConvertingOcr ? "⏳ กำลังแปลง..." : "✨ แปลงลายมือเป็นข้อความ"}
+                        {isConvertingOcr ? "กำลังแปลง..." : "แปลงลายมือเป็นข้อความ"}
                       </button>
                     )}
 
@@ -872,50 +979,46 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                       type="button"
                       disabled={!hasUserDrawn || isConvertingOcr}
                       onClick={handleRevealClick}
-                      className={`px-6 sm:px-8 py-3.5 rounded-2xl font-black text-sm sm:text-base transition-all flex items-center justify-center border shadow-md shrink-0 ${
+                      className={`px-6 sm:px-8 py-3.5 rounded-2xl font-bold text-sm sm:text-base transition-all flex items-center justify-center border shadow-sm shrink-0 ${
                         hasUserDrawn && !isConvertingOcr
-                          ? "bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white border-indigo-500 shadow-indigo-600/30 cursor-pointer animate-pulse"
+                          ? "bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white border-indigo-500 cursor-pointer"
                           : "bg-slate-200 text-slate-400 border-slate-300 cursor-not-allowed opacity-75 shadow-none"
                       }`}
                     >
                       {isConvertingOcr
-                        ? "⏳ กำลังตรวจและแปลงลายมือ..."
+                        ? "กำลังตรวจและแปลงลายมือ..."
                         : typedInput
-                        ? "✅ ยืนยันตรวจคำตอบ"
-                        : "✨ แปลงและตรวจคำตอบ"}
+                        ? "ยืนยันคำตอบ"
+                        : "แปลงและตรวจคำตอบ"}
                     </button>
 
                     <button
                       type="button"
                       onClick={handleNext}
-                      className="px-3.5 sm:px-4 py-3.5 rounded-2xl font-bold text-xs sm:text-sm bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 transition-all cursor-pointer flex items-center gap-1 shrink-0"
+                      className="cursor-pointer px-4 py-3.5 rounded-2xl font-bold text-xs sm:text-sm bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 transition-all"
                     >
-                      ข้ามคำ ⏩
+                      ข้ามคำ
                     </button>
                   </div>
                 ) : (
                   <div
-                    className={`pointer-events-auto w-full p-6 rounded-3xl border shadow-2xl flex flex-col gap-4 max-h-[75vh] overflow-y-auto transition-all duration-300 ${
+                    className={`pointer-events-auto w-full p-6 rounded-3xl border shadow-xl flex flex-col gap-4 max-h-[75vh] overflow-y-auto transition-all duration-300 ${
                       answerStatus === "CORRECT"
-                        ? "bg-emerald-50/80 backdrop-blur-xl border-emerald-400 shadow-emerald-500/15"
+                        ? "bg-emerald-50/80 backdrop-blur-xl border-emerald-400"
                         : "bg-white/95 backdrop-blur-xl border-slate-200"
                     }`}
                   >
                     {/* RULE 4: "เมื่อถูกให้ทั้งแทบเป็นสีเขียวไม่ต้องเด้ง ๆ ลายตา" */}
                     {answerStatus === "CORRECT" && (
-                      <div className="w-full p-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-2xl shadow-md shadow-emerald-600/25 border border-emerald-300 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <span className="text-3xl">🎉</span>
-                          <h3 className="text-base sm:text-lg font-black">ถูกต้อง</h3>
-                        </div>
-                        <span className="px-3 py-1 bg-white text-emerald-900 text-xs font-black rounded-full uppercase">+1 EXP ✅</span>
+                      <div className="w-full p-4 bg-emerald-600 text-white rounded-2xl shadow-xs border border-emerald-500 flex items-center justify-between">
+                        <h3 className="text-base sm:text-lg font-bold">ถูกต้อง</h3>
+                        <span className="px-3 py-1 bg-white text-emerald-900 text-xs font-bold rounded-full uppercase">+1 EXP</span>
                       </div>
                     )}
                     {answerStatus === "WRONG" && (
-                      <div className="w-full p-4 bg-gradient-to-r from-rose-600 to-red-600 text-white rounded-2xl shadow-md shadow-rose-600/25 border border-rose-300 flex items-center gap-3">
-                        <span className="text-3xl">💡</span>
+                      <div className="w-full p-4 bg-rose-600 text-white rounded-2xl shadow-xs border border-rose-500 flex items-center gap-3">
                         <div>
-                          <h3 className="text-base sm:text-lg font-black">ยังไม่ถูกต้อง</h3>
+                          <h3 className="text-base sm:text-lg font-bold">ยังไม่ถูกต้อง</h3>
                           {typedInput && (
                             <p className="text-xs text-rose-100 font-medium mt-0.5">
                               คุณตอบ: &ldquo;{typedInput}&rdquo; • เฉลย: &ldquo;{vocab.word}&rdquo;
@@ -954,7 +1057,7 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                         </p>
                         {vocab.exampleTarget && (
                           <p className="text-xs font-semibold text-slate-700 pt-1 border-t border-slate-200/60">
-                            🇹🇭 คำแปล: {vocab.exampleTarget}
+                            คำแปล: {vocab.exampleTarget}
                           </p>
                         )}
                       </blockquote>
@@ -966,30 +1069,30 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                           <button
                             onClick={() => handleSrsReview("again")}
                             disabled={isReviewing}
-                            className="p-2.5 rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-900 font-bold border border-rose-300 text-xs sm:text-sm"
+                            className="cursor-pointer p-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-900 font-bold border border-rose-200 text-xs sm:text-sm transition-colors"
                           >
-                            ❌ จำไม่ได้
+                            จำไม่ได้
                           </button>
                           <button
                             onClick={() => handleSrsReview("hard")}
                             disabled={isReviewing}
-                            className="p-2.5 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold border border-amber-300 text-xs sm:text-sm"
+                            className="cursor-pointer p-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold border border-amber-200 text-xs sm:text-sm transition-colors"
                           >
-                            ⚠️ จำยาก
+                            จำยาก
                           </button>
                           <button
                             onClick={() => handleSrsReview("good")}
                             disabled={isReviewing}
-                            className="p-2.5 rounded-xl bg-blue-100 hover:bg-blue-200 text-blue-900 font-bold border border-blue-300 text-xs sm:text-sm"
+                            className="cursor-pointer p-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-900 font-bold border border-blue-200 text-xs sm:text-sm transition-colors"
                           >
-                            ✅ จำได้ดี
+                            จำได้ดี
                           </button>
                           <button
                             onClick={() => handleSrsReview("easy")}
                             disabled={isReviewing}
-                            className="p-2.5 rounded-xl bg-emerald-100 hover:bg-emerald-200 text-emerald-900 font-bold border border-emerald-300 text-xs sm:text-sm"
+                            className="cursor-pointer p-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold border border-emerald-200 text-xs sm:text-sm transition-colors"
                           >
-                            🌟 ง่ายมาก
+                            ง่ายมาก
                           </button>
                         </div>
                       ) : (
@@ -998,18 +1101,18 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                             type="button"
                             onClick={handlePrev}
                             disabled={historyIndex <= 0}
-                            className="px-4 py-3.5 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold rounded-xl text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                            className="cursor-pointer px-4 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all border border-slate-200"
                           >
-                            ⬅️ ย้อนกลับ
+                            ย้อนกลับ
                           </button>
                           <button
                             onClick={() => {
                               setGuestCompletedCount((prev) => prev + 1);
                               handleNext();
                             }}
-                            className="flex-1 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl shadow-md text-center text-base cursor-pointer"
+                            className="cursor-pointer flex-1 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-xs text-center text-sm sm:text-base transition-all"
                           >
-                            คำศัพท์ถัดไป ➡️
+                            คำศัพท์ถัดไป
                           </button>
                         </div>
                       )}
@@ -1019,9 +1122,9 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                             type="button"
                             onClick={handlePrev}
                             disabled={historyIndex <= 0}
-                            className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl text-xs disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                            className="cursor-pointer px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs disabled:opacity-40 disabled:cursor-not-allowed transition-all border border-slate-200"
                           >
-                            ⬅️ ย้อนกลับไปคำก่อนหน้า
+                            ย้อนกลับไปคำก่อนหน้า
                           </button>
                         </div>
                       )}
@@ -1039,7 +1142,7 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                 {!showAnswer && (
                   <div className="text-center flex flex-col gap-2">
                     <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                      {practiceDirection === "TH_TO_EN" ? "🇹🇭 คำแปลภาษาไทย (พิมพ์คำศัพท์อังกฤษ)" : "🇬🇧 คำศัพท์อังกฤษ (แปลความหมาย)"}
+                      {practiceDirection === "TH_TO_EN" ? "คำแปลภาษาไทย (พิมพ์คำศัพท์อังกฤษ)" : "คำศัพท์อังกฤษ (แปลความหมาย)"}
                     </span>
                     {practiceDirection === "TH_TO_EN" ? (
                       <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-slate-900 tracking-tight leading-tight">
@@ -1090,24 +1193,13 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
 
                           setRecordedAnswers((prev) => {
                             if (prev.some((a) => a.vocabId === vocab.id)) return prev;
-                            const nextAnswers = [...prev, answerRecord];
-                            setTimeout(() => {
-                              if (
-                                nextAnswers.length >= 15 ||
-                                (vocab.meta?.progress?.totalWords && nextAnswers.length >= vocab.meta.progress.totalWords)
-                              ) {
-                                openAndSaveSummary(nextAnswers);
-                              } else {
-                                handleNext();
-                              }
-                            }, 1500);
-                            return nextAnswers;
+                            return [...prev, answerRecord];
                           });
                         } else {
                           syncCurrentToHistory({ typedInput: val });
                         }
                       }}
-                      className="w-full text-2xl sm:text-4xl font-extrabold text-center py-6 px-8 bg-white border-2 border-slate-300 focus:border-indigo-600 rounded-3xl shadow-lg focus:outline-none focus:ring-4 focus:ring-indigo-100 transition-all text-slate-900 placeholder:text-slate-300 placeholder:font-normal placeholder:text-xl sm:placeholder:text-2xl"
+                      className="w-full text-2xl sm:text-4xl font-extrabold text-center py-6 px-8 bg-white border-2 border-slate-300 focus:border-indigo-600 rounded-3xl shadow-md focus:outline-none focus:ring-4 focus:ring-indigo-100 transition-all text-slate-900 placeholder:text-slate-300 placeholder:font-normal placeholder:text-xl sm:placeholder:text-2xl"
                     />
 
                     <div className="flex items-center justify-center gap-3 mt-1 flex-wrap w-full sm:w-auto">
@@ -1115,56 +1207,46 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                         type="button"
                         onClick={handlePrev}
                         disabled={historyIndex <= 0}
-                        className="px-5 py-3.5 rounded-2xl font-bold text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all border border-slate-200 shadow-xs flex items-center gap-1.5"
+                        className="cursor-pointer px-5 py-3.5 rounded-2xl font-bold text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all border border-slate-200 shadow-xs"
                       >
-                        ⬅️ ย้อนกลับ
+                        ย้อนกลับ
                       </button>
 
                       <button
                         type="button"
                         disabled={!typedInput.trim()}
                         onClick={handleRevealClick}
-                        className={`px-8 py-3.5 rounded-2xl text-base font-black transition-all border shadow-md flex items-center justify-center ${
+                        className={`px-8 py-3.5 rounded-2xl text-base font-bold transition-all border shadow-sm flex items-center justify-center ${
                           typedInput.trim().length > 0
-                            ? "bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white border-indigo-500 shadow-indigo-600/25 cursor-pointer animate-pulse"
+                            ? "bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white border-indigo-500 cursor-pointer"
                             : "bg-slate-200 text-slate-400 border-slate-300 cursor-not-allowed opacity-70 shadow-none"
                         }`}
                       >
-                        ดูเฉลย
+                        ยืนยันคำตอบ
                       </button>
 
                       <button
                         type="button"
                         onClick={handleNext}
-                        className="px-5 py-3.5 rounded-2xl font-bold text-sm bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 transition-all cursor-pointer shadow-xs flex items-center gap-1"
+                        className="cursor-pointer px-5 py-3.5 rounded-2xl font-bold text-sm bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 transition-all shadow-xs"
                       >
-                        ข้ามคำ ⏩
+                        ข้ามคำ
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div
-                    className={`w-full p-6 sm:p-8 rounded-3xl border transition-all duration-300 flex flex-col gap-6 ${
-                      answerStatus === "CORRECT"
-                        ? "bg-emerald-50/70 border-emerald-400 shadow-xl shadow-emerald-500/15"
-                        : "bg-white border-slate-200 shadow-xl"
-                    }`}
-                  >
+                  <div className="w-full p-6 sm:p-8 rounded-3xl border transition-all duration-300 flex flex-col gap-6 bg-white border-slate-200 shadow-xl">
                     {/* RULE 4: "เมื่อถูกให้ทั้งแทบเป็นสีเขียวไม่ต้องเด้ง ๆ ลายตา" */}
                     {answerStatus === "CORRECT" && (
-                      <div className="w-full p-4.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-2xl shadow-md shadow-emerald-600/25 border border-emerald-300 flex items-center justify-between transition-all duration-300">
-                        <div className="flex items-center gap-3.5">
-                          <span className="text-4xl">🎉</span>
-                          <h3 className="text-lg sm:text-xl font-black">ถูกต้อง</h3>
-                        </div>
-                        <span className="px-3 py-1 bg-white text-emerald-900 text-xs font-black rounded-full uppercase shadow-2xs">+1 EXP ✅</span>
+                      <div className="w-full p-4.5 bg-emerald-600 text-white rounded-2xl shadow-xs border border-emerald-500 flex items-center justify-between transition-all duration-300">
+                        <h3 className="text-lg sm:text-xl font-bold">ถูกต้อง</h3>
+                        <span className="px-3 py-1 bg-white text-emerald-900 text-xs font-bold rounded-full uppercase shadow-2xs">+1 EXP</span>
                       </div>
                     )}
                     {answerStatus === "WRONG" && (
-                      <div className="w-full p-4.5 bg-gradient-to-r from-rose-600 to-red-600 text-white rounded-2xl shadow-md shadow-rose-600/25 border border-rose-300 flex items-center gap-3.5">
-                        <span className="text-4xl">💡</span>
+                      <div className="w-full p-4.5 bg-rose-600 text-white rounded-2xl shadow-xs border border-rose-500 flex items-center gap-3.5">
                         <div>
-                          <h3 className="text-lg sm:text-xl font-black">ยังไม่ถูกต้อง</h3>
+                          <h3 className="text-lg sm:text-xl font-bold">ยังไม่ถูกต้อง</h3>
                           {typedInput && (
                             <p className="text-xs sm:text-sm text-rose-100 font-medium mt-0.5">
                               คุณตอบ: &ldquo;{typedInput}&rdquo; • เฉลย: &ldquo;{vocab.word}&rdquo;
@@ -1178,7 +1260,7 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80">
                       <div>
                         <span className="text-xs font-bold uppercase text-indigo-600 tracking-wider">
-                          ✨ เฉลยคำแปลและความหมาย
+                          เฉลยคำแปลและความหมาย
                         </span>
                         <div className="flex items-baseline gap-3 mt-1">
                           <h2 className="text-3xl sm:text-4xl font-black text-slate-900">{displayWord}</h2>
@@ -1209,7 +1291,7 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                         </p>
                         {vocab.exampleTarget && (
                           <p className="text-xs font-semibold text-slate-700 pt-1 border-t border-slate-200/60">
-                            🇹🇭 คำแปล: {vocab.exampleTarget}
+                            คำแปล: {vocab.exampleTarget}
                           </p>
                         )}
                       </blockquote>
@@ -1225,30 +1307,30 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                             <button
                               onClick={() => handleSrsReview("again")}
                               disabled={isReviewing}
-                              className="py-3 px-2 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-900 font-bold border border-rose-200 text-xs sm:text-sm transition-all"
+                              className="cursor-pointer py-3 px-2 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-900 font-bold border border-rose-200 text-xs sm:text-sm transition-all"
                             >
-                              ❌ จำไม่ได้
+                              จำไม่ได้
                             </button>
                             <button
                               onClick={() => handleSrsReview("hard")}
                               disabled={isReviewing}
-                              className="py-3 px-2 rounded-2xl bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold border border-amber-200 text-xs sm:text-sm transition-all"
+                              className="cursor-pointer py-3 px-2 rounded-2xl bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold border border-amber-200 text-xs sm:text-sm transition-all"
                             >
-                              ⚠️ จำยาก
+                              จำยาก
                             </button>
                             <button
                               onClick={() => handleSrsReview("good")}
                               disabled={isReviewing}
-                              className="py-3 px-2 rounded-2xl bg-blue-50 hover:bg-blue-100 text-blue-900 font-bold border border-blue-200 text-xs sm:text-sm transition-all"
+                              className="cursor-pointer py-3 px-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-900 font-bold border border-blue-200 text-xs sm:text-sm transition-all"
                             >
-                              ✅ จำได้ดี
+                              จำได้ดี
                             </button>
                             <button
                               onClick={() => handleSrsReview("easy")}
                               disabled={isReviewing}
-                              className="py-3 px-2 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold border border-emerald-200 text-xs sm:text-sm transition-all"
+                              className="cursor-pointer py-3 px-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold border border-emerald-200 text-xs sm:text-sm transition-all"
                             >
-                              🌟 ง่ายมาก
+                              ง่ายมาก
                             </button>
                           </div>
                         </>
@@ -1258,18 +1340,18 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                             type="button"
                             onClick={handlePrev}
                             disabled={historyIndex <= 0}
-                            className="px-5 py-4 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-2xl text-base disabled:opacity-40 disabled:cursor-not-allowed transition-all border border-slate-200 shadow-xs"
+                            className="cursor-pointer px-5 py-4 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-2xl text-base disabled:opacity-40 disabled:cursor-not-allowed transition-all border border-slate-200 shadow-xs"
                           >
-                            ⬅️ ย้อนกลับ
+                            ย้อนกลับ
                           </button>
                           <button
                             onClick={() => {
                               setGuestCompletedCount((prev) => prev + 1);
                               handleNext();
                             }}
-                            className="flex-1 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl shadow-lg shadow-indigo-600/25 transition-all text-center text-base cursor-pointer"
+                            className="cursor-pointer flex-1 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl shadow-xs transition-all text-center text-base"
                           >
-                            คำศัพท์ถัดไป ➡️
+                            คำศัพท์ถัดไป
                           </button>
                         </div>
                       )}
@@ -1279,9 +1361,9 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                             type="button"
                             onClick={handlePrev}
                             disabled={historyIndex <= 0}
-                            className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all border border-slate-200 shadow-xs"
+                            className="cursor-pointer px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all border border-slate-200 shadow-xs"
                           >
-                            ⬅️ ย้อนกลับไปคำก่อนหน้า
+                            ย้อนกลับไปคำก่อนหน้า
                           </button>
                         </div>
                       )}
@@ -1293,147 +1375,6 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
           )}
         </>
       ) : null}
-
-      {/* =========================================================================
-          PRACTICE SESSION SUMMARY MODAL ("และสรุปตอนหลังเก็บลง db ว่าถูกผิดกี่คำเขียนว่าอะไร ถูกต้องเขียนอย่างไร")
-          ========================================================================= */}
-      {showSummaryModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-fadeIn">
-          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200/80 max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-scaleUp">
-            {/* Modal Header */}
-            <div className="p-6 sm:p-8 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 text-white flex items-center justify-between shrink-0">
-              <div>
-                <span className="text-xs font-bold uppercase tracking-widest bg-white/20 px-3 py-1 rounded-full">
-                  🎯 สรุปผลการฝึกซ้อมรอบนี้
-                </span>
-                <h2 className="text-2xl sm:text-3xl font-black mt-2">ผลลัพธ์และบันทึกข้อมูล</h2>
-                <p className="text-indigo-100 text-xs sm:text-sm font-medium mt-1">
-                  ระบบได้ทำการสรุปคำศัพท์ที่คุณฝึกซ้อมและเก็บสถิติบังคับลงฐานข้อมูล (DB) เรียบร้อยแล้ว
-                </p>
-              </div>
-              <div className="text-right shrink-0 hidden sm:block">
-                <span className="text-4xl">🏆</span>
-              </div>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-6 sm:p-8 overflow-y-auto flex-1 flex flex-col gap-6">
-              {/* Saving status indicator */}
-              {isSavingSummary ? (
-                <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-2xl flex items-center gap-3 text-indigo-900 font-bold text-sm">
-                  <div className="w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin shrink-0" />
-                  <span>⏳ กำลังบันทึกสรุปผลและคำตอบแต่ละข้อลง Database (table: practice_sessions & practice_answers)...</span>
-                </div>
-              ) : savedSessionSummary ? (
-                <div className="p-4 bg-emerald-50 border border-emerald-300 rounded-2xl flex items-center gap-3 text-emerald-900 font-bold text-sm shadow-xs">
-                  <span className="text-xl">✅</span>
-                  <div>
-                    <span>บันทึกผลลง Database เรียบร้อยแล้ว (Session ID: <code className="bg-emerald-100 px-1.5 py-0.5 rounded text-xs font-mono">{savedSessionSummary.id}</code>)</span>
-                  </div>
-                </div>
-              ) : null}
-
-              {/* Summary Stats Cards */}
-              {(() => {
-                const total = recordedAnswers.length;
-                const correct = recordedAnswers.filter((a) => a.isCorrect).length;
-                const wrong = total - correct;
-                const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
-                return (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-center">
-                      <span className="text-xs font-bold text-slate-500 uppercase">📚 คำศัพท์ทั้งหมด</span>
-                      <p className="text-3xl font-black text-slate-800 mt-1">{total} <span className="text-sm font-bold">คำ</span></p>
-                    </div>
-                    <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-center">
-                      <span className="text-xs font-bold text-emerald-700 uppercase">✅ ตอบถูกต้อง</span>
-                      <p className="text-3xl font-black text-emerald-600 mt-1">{correct} <span className="text-sm font-bold">คำ</span></p>
-                    </div>
-                    <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-center">
-                      <span className="text-xs font-bold text-rose-700 uppercase">❌ เสียไป/ผิดพลาด</span>
-                      <p className="text-3xl font-black text-rose-600 mt-1">{wrong} <span className="text-sm font-bold">คำ</span></p>
-                    </div>
-                    <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-2xl text-center">
-                      <span className="text-xs font-bold text-indigo-700 uppercase">🎯 ความแม่นยำ</span>
-                      <p className="text-3xl font-black text-indigo-600 mt-1">{pct}%</p>
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* Detailed Words Table ("ถูกผิดกี่คำเขียนว่าอะไร ถูกต้องเขียนอย่างไร") */}
-              <div>
-                <h3 className="text-base font-black text-slate-800 mb-3 flex items-center gap-2">
-                  <span>📋</span>
-                  <span>รายละเอียดคำศัพท์แต่ละข้อ (เขียนว่าอะไร • ถูกต้องเขียนอย่างไร)</span>
-                </h3>
-                <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse text-xs sm:text-sm">
-                      <thead>
-                        <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-600 font-extrabold">
-                          <th className="p-3.5 w-14 text-center">ลำดับ</th>
-                          <th className="p-3.5">คำศัพท์</th>
-                          <th className="p-3.5 w-24 text-center">ผลลัพธ์</th>
-                          <th className="p-3.5">สิ่งที่คุณเขียน / ตอบ (`userTypedInput`)</th>
-                          <th className="p-3.5">เฉลยถูกต้องเขียนอย่างไร (`correctAnswerText`)</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {recordedAnswers.map((item, idx) => (
-                          <tr key={idx} className={item.isCorrect ? "bg-emerald-50/30 hover:bg-emerald-50/60" : "bg-rose-50/30 hover:bg-rose-50/60"}>
-                            <td className="p-3.5 text-center font-bold text-slate-400">{idx + 1}</td>
-                            <td className="p-3.5 font-black text-slate-900">{item.word}</td>
-                            <td className="p-3.5 text-center">
-                              {item.isCorrect ? (
-                                <span className="px-2 py-1 bg-emerald-100 text-emerald-800 font-black rounded-lg border border-emerald-300 text-xs">
-                                  ✅ ถูกต้อง
-                                </span>
-                              ) : (
-                                <span className="px-2 py-1 bg-rose-100 text-rose-800 font-black rounded-lg border border-rose-300 text-xs">
-                                  ❌ เสียไป
-                                </span>
-                              )}
-                            </td>
-                            <td className="p-3.5 font-extrabold text-slate-800">
-                              {item.userTypedInput || (item.isCorrect ? item.word : "- ไม่ได้ระบุ -")}
-                            </td>
-                            <td className="p-3.5 font-bold text-indigo-700">
-                              {item.correctAnswerText}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-5 sm:p-6 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
-              <Link
-                href="/"
-                className="w-full sm:w-auto px-5 py-3.5 rounded-2xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-sm text-center transition-all"
-              >
-                ⬅️ กลับไปเลือกหมวดคำศัพท์ใหม่
-              </Link>
-              <button
-                type="button"
-                onClick={() => {
-                  setRecordedAnswers([]);
-                  setShowSummaryModal(false);
-                  setSavedSessionSummary(null);
-                  fetchNextVocab();
-                }}
-                className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-black text-sm sm:text-base shadow-lg shadow-indigo-600/25 transition-all cursor-pointer text-center"
-              >
-                🟢 ฝึกซ้อมรอบใหม่ (Start Fresh) ➡️
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
