@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { ArrowLeft, RotateCcw } from "lucide-react";
 import TTSButton from "@/components/tts/tts-button";
 import { getCefrBadgeProps, getCefrFromNumber } from "@/lib/cefr";
 import { recordGuestWordCompletion, getCompletedWordIds, recordCollectionPlaySession, GuestSessionHistoryItem } from "@/lib/progress";
@@ -1060,9 +1061,11 @@ export default function PracticeSession({
               <div className="flex items-center gap-2.5 shrink-0">
                 <Link
                   href={vocab.collectionId ? `/collection/${vocab.collectionId}` : "/"}
-                  className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold text-slate-700 transition-all"
+                  className="cursor-pointer flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-xl text-xs font-bold shadow-xs transition-all"
+                  title="กลับหน้าหลัก"
                 >
-                  <span>กลับหน้าหลัก</span>
+                  <ArrowLeft className="w-4 h-4 shrink-0" />
+                  <span className="hidden sm:inline">กลับหน้าหลัก</span>
                 </Link>
                 <span className="px-2.5 py-1 bg-indigo-50 text-indigo-700 rounded-md text-xs font-bold border border-indigo-200/60">
                   {(() => {
@@ -1085,7 +1088,7 @@ export default function PracticeSession({
                 <button
                   type="button"
                   onClick={() => {
-                    if (confirm("ต้องการเริ่มแบบฝึกซ้อมชุดนี้ใหม่ตั้งแต่ต้น (สุ่มคำเริ่มต้นใหม่) หรือไม่?")) {
+                    if (confirm("ต้องการเริ่มแบบฝึกซ้อมชุดนี้ใหม่ตั้งแต่คำแรกหรือไม่?")) {
                       const storageKey = `vocab_practice_state_${selectedCollectionId || selectedCategory || "general"}`;
                       try { localStorage.removeItem(storageKey); } catch (e) {}
                       setHistory([]);
@@ -1096,10 +1099,11 @@ export default function PracticeSession({
                       fetchNextVocab(true);
                     }
                   }}
-                  className="cursor-pointer px-2.5 py-1 bg-slate-100 hover:bg-rose-50 hover:text-rose-600 rounded-lg text-[11px] font-bold text-slate-600 transition-all border border-slate-200/80"
-                  title="เริ่มฝึกฝนใหม่ตั้งแต่ต้น"
+                  className="cursor-pointer flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white rounded-xl text-xs font-bold shadow-xs transition-all"
+                  title="เริ่มฝึกฝนใหม่ตั้งแต่คำแรก"
                 >
-                  เริ่มใหม่
+                  <RotateCcw className="w-4 h-4 shrink-0" />
+                  <span className="hidden sm:inline">เริ่มใหม่</span>
                 </button>
               </div>
 
@@ -1143,9 +1147,6 @@ export default function PracticeSession({
                   <div className="inline-flex items-center justify-center px-4 py-1.5 rounded-full bg-indigo-50 border border-indigo-200/80 text-indigo-700 text-xs font-bold tracking-wide shadow-2xs">
                     <span>คำที่ {currentWordNumber} / {totalWords}</span>
                   </div>
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                    คำแปลภาษาไทย (เขียนหรือพิมพ์คำศัพท์อังกฤษ)
-                  </span>
                   <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-slate-900 tracking-tight leading-tight">
                     {vocab.meaning}
                   </h1>
