@@ -1098,34 +1098,42 @@ export default function PracticeSession({
         <>
           {/* Top Universal Progress Navbar */}
           <div className="absolute top-3 sm:top-4 left-3 sm:left-4 right-3 sm:right-4 z-30 pointer-events-none flex justify-center">
-            <div className="w-full max-w-5xl pointer-events-auto bg-white/95 backdrop-blur-md px-4 sm:px-6 py-3 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5 shrink-0">
+            <div className="w-full max-w-6xl pointer-events-auto bg-white/95 backdrop-blur-md px-4 sm:px-6 py-3 sm:py-3.5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-6">
+              {/* Left Group: Back Button + Collection Title & CEFR Badge */}
+              <div className="w-full sm:w-auto flex items-center justify-between sm:justify-start gap-3 shrink-0 min-w-0">
                 <Link
                   href={vocab.collectionId ? `/collection/${vocab.collectionId}` : "/"}
-                  className="cursor-pointer flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-xl text-xs font-bold shadow-xs transition-all"
+                  className="cursor-pointer flex items-center gap-1.5 px-3.5 py-1.5 sm:py-2 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-xl text-xs font-bold shadow-2xs transition-all shrink-0"
                   title="กลับหน้าหลัก"
                 >
                   <ArrowLeft className="w-4 h-4 shrink-0" />
-                  <span className="hidden sm:inline">กลับหน้าหลัก</span>
+                  <span>กลับหน้าหลัก</span>
                 </Link>
-                <span className="text-sm sm:text-base font-extrabold text-slate-900 tracking-tight ml-1">
+
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-sm sm:text-base font-extrabold text-slate-900 tracking-tight truncate">
+                    {(() => {
+                      const colKey = selectedCollectionId || vocab.collectionId || selectedCategory || "";
+                      const meta = getCollectionMeta(colKey);
+                      return meta ? meta.title : colKey || "TGAT 1";
+                    })()}
+                  </span>
                   {(() => {
                     const colKey = selectedCollectionId || vocab.collectionId || selectedCategory || "";
                     const meta = getCollectionMeta(colKey);
-                    return meta ? meta.title : colKey || "TGAT 1";
+                    if (!meta || !meta.cefrLevel) return null;
+                    const cefr = getCefrBadgeProps(meta.cefrLevel);
+                    return (
+                      <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold border shrink-0 ${cefr.colorClass}`}>
+                        {cefr.badgeText}
+                      </span>
+                    );
                   })()}
-                </span>
-                {(() => {
-                  const colKey = selectedCollectionId || vocab.collectionId || selectedCategory || "";
-                  const meta = getCollectionMeta(colKey);
-                  if (!meta || !meta.cefrLevel) return null;
-                  const cefr = getCefrBadgeProps(meta.cefrLevel);
-                  return (
-                    <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold border ${cefr.colorClass}`}>
-                      {cefr.badgeText}
-                    </span>
-                  );
-                })()}
+                </div>
+              </div>
+
+              {/* Right Group: Action Controls + Word Progress Bar */}
+              <div className="w-full sm:w-auto flex items-center justify-between sm:justify-end gap-4 border-t sm:border-t-0 pt-2.5 sm:pt-0 border-slate-100">
                 <button
                   type="button"
                   onClick={() => {
@@ -1140,17 +1148,15 @@ export default function PracticeSession({
                       fetchNextVocab(true);
                     }
                   }}
-                  className="cursor-pointer flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white rounded-xl text-xs font-bold shadow-xs transition-all"
+                  className="cursor-pointer flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 sm:py-2 bg-white hover:bg-rose-50 active:scale-95 text-rose-600 hover:text-rose-700 border border-rose-200/80 rounded-xl text-xs font-bold shadow-2xs transition-all shrink-0"
                   title="เริ่มฝึกฝนใหม่ตั้งแต่คำแรก"
                 >
-                  <RotateCcw className="w-4 h-4 shrink-0" />
-                  <span className="hidden sm:inline">เริ่มใหม่</span>
+                  <RotateCcw className="w-3.5 h-3.5 shrink-0" />
+                  <span>เริ่มใหม่</span>
                 </button>
-              </div>
 
-              {/* Word Progress Bar (% & Counter) */}
-              <div className="w-full sm:w-auto flex items-center gap-3">
-                <div className="w-full sm:w-80 flex flex-col gap-1.5">
+                {/* Word Progress Bar (% & Counter) */}
+                <div className="w-full sm:w-64 md:w-72 flex flex-col gap-1.5">
                   <div className="flex items-center justify-between text-xs font-bold text-slate-700">
                     <span>
                       เล่นไปแล้ว {playedWordsCount} / {totalWords} คำ
