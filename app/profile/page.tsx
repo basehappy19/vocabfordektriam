@@ -3,12 +3,22 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { User, Mail, Lock, ArrowLeft, Loader2, CheckCircle2, AlertCircle, ShieldCheck, Calendar } from "lucide-react";
+import { signOut } from "next-auth/react";
+import { User, Mail, Lock, ArrowLeft, Loader2, CheckCircle2, AlertCircle, ShieldCheck, Calendar, GraduationCap, Trash2 } from "lucide-react";
+
+const GENERATION_OPTIONS = [
+  { value: "DEK69", label: "DEK 69 (สอบ TCAS 69)" },
+  { value: "DEK70", label: "DEK 70 (สอบ TCAS 70)" },
+  { value: "DEK71", label: "DEK 71 (สอบ TCAS 71)" },
+  { value: "DEK72", label: "DEK 72 (สอบ TCAS 72)" },
+  { value: "เด็กซิ่ว", label: "เด็กซิ่ว (TCAS ปีก่อน ๆ)" },
+];
 
 interface UserProfile {
   id: string;
   name: string | null;
   email: string | null;
+  generation?: string | null;
   createdAt: string;
 }
 
@@ -17,10 +27,11 @@ export default function ProfilePage() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Email form state
+  // Email & Generation form state
   const [email, setEmail] = useState("");
-  const [savingEmail, setSavingEmail] = useState(false);
-  const [emailMsg, setEmailMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [generation, setGeneration] = useState("DEK69");
+  const [savingInfo, setSavingInfo] = useState(false);
+  const [infoMsg, setInfoMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   // Password form state
   const [currentPassword, setCurrentPassword] = useState("");
@@ -28,6 +39,9 @@ export default function ProfilePage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [savingPassword, setSavingPassword] = useState(false);
   const [passwordMsg, setPasswordMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // Delete account state
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -41,6 +55,7 @@ export default function ProfilePage() {
         const data = await res.json();
         setUser(data.user);
         setEmail(data.user.email || "");
+        setGeneration(data.user.generation || "DEK69");
       } else {
         router.push("/login");
       }
@@ -52,29 +67,49 @@ export default function ProfilePage() {
     }
   };
 
-  const handleSaveEmail = async (e: React.FormEvent) => {
+  const handleSaveInfo = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSavingEmail(true);
-    setEmailMsg(null);
+    setSavingInfo(true);
+    setInfoMsg(null);
 
     try {
       const res = await fetch("/api/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim() }),
+        body: JSON.stringify({ email: email.trim(), generation }),
       });
 
       const data = await res.json();
       if (!res.ok) {
-        setEmailMsg({ type: "error", text: data.error || "ไม่สามารถบันทึกอีเมลได้" });
+        setInfoMsg({ type: "error", text: data.error || "ไม่สามารถบันทึกข้อมูลได้" });
       } else {
         setUser(data.user);
-        setEmailMsg({ type: "success", text: "บันทึกอีเมลเรียบร้อยแล้ว" });
+        setInfoMsg({ type: "success", text: "บันทึกข้อมูลส่วนตัวเรียบร้อยแล้ว" });
       }
     } catch (err) {
-      setEmailMsg({ type: "error", text: "เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง" });
+      setInfoMsg({ type: "error", text: "เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง" });
     } finally {
-      setSavingEmail(false);
+      setSavingInfo(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!confirm("ยืนยันการลบบัญชีผู้ใช้ถาวร?\n\nคำเตือน: ข้อมูลสถิติ ความคืบหน้า และประวัติการฝึกฝนทั้งหมดของคุณจะสูญหายทันที และไม่สามารถกู้คืนกลับมาได้อีก")) {
+      return;
+    }
+    setDeleting(true);
+    try {
+      const res = await fetch("/api/profile", { method: "DELETE" });
+      if (res.ok) {
+        await signOut({ callbackUrl: "/" });
+      } else {
+        const data = await res.json();
+        alert(data.error || "ไม่สามารถลบบัญชีผู้ใช้ได้");
+        setDeleting(false);
+      }
+    } catch (err) {
+      alert("เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง");
+      setDeleting(false);
     }
   };
 
@@ -201,24 +236,24 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {emailMsg && (
+          {infoMsg && (
             <div
               className={`p-4 rounded-2xl border text-xs sm:text-sm font-bold flex items-center gap-3 animate-fade-in ${
-                emailMsg.type === "success"
+                infoMsg.type === "success"
                   ? "bg-emerald-50 border-emerald-200 text-emerald-800"
                   : "bg-rose-50 border-rose-200 text-rose-700"
               }`}
             >
-              {emailMsg.type === "success" ? (
+              {infoMsg.type === "success" ? (
                 <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-600" />
               ) : (
                 <AlertCircle className="w-5 h-5 shrink-0 text-rose-600" />
               )}
-              <span>{emailMsg.text}</span>
+              <span>{infoMsg.text}</span>
             </div>
           )}
 
-          <form onSubmit={handleSaveEmail} className="flex flex-col gap-6">
+          <form onSubmit={handleSaveInfo} className="flex flex-col gap-6">
             {/* Username Field - READONLY / IMMUTABLE */}
             <div className="flex flex-col gap-2.5">
               <div className="flex items-center justify-between">
@@ -240,9 +275,27 @@ export default function ProfilePage() {
                 />
                 <User className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
               </div>
-              <p className="text-xs text-slate-400 font-medium pl-1">
-                * ชื่อผู้ใช้เป็นตัวระบุหลักในระบบสถิติและการท่องศัพท์ จึงไม่สามารถเปลี่ยนแปลงได้
-              </p>
+            </div>
+
+            {/* Generation Field - EDITABLE */}
+            <div className="flex flex-col gap-2.5">
+              <label className="text-xs sm:text-sm font-bold text-slate-700 tracking-wide">
+                เด็กรุ่นไหน (รุ่นที่เตรียมสอบ TCAS)
+              </label>
+              <div className="relative">
+                <select
+                  value={generation}
+                  onChange={(e) => setGeneration(e.target.value)}
+                  className="w-full bg-slate-50/80 border border-slate-200 rounded-2xl px-4 py-4 pl-12 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white font-bold text-slate-800 transition-all appearance-none cursor-pointer"
+                >
+                  {GENERATION_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                <GraduationCap className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
             </div>
 
             {/* Email Field - EDITABLE */}
@@ -268,16 +321,16 @@ export default function ProfilePage() {
             <div className="flex justify-end pt-2">
               <button
                 type="submit"
-                disabled={savingEmail || email.trim() === (user.email || "")}
+                disabled={savingInfo || (email.trim() === (user.email || "") && generation === (user.generation || "DEK69"))}
                 className="w-full sm:w-auto px-6 py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-extrabold text-sm sm:text-base rounded-2xl shadow-lg shadow-indigo-600/20 transition-all flex items-center justify-center gap-2 active:scale-98 cursor-pointer"
               >
-                {savingEmail ? (
+                {savingInfo ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
                     <span>กำลังบันทึก...</span>
                   </>
                 ) : (
-                  <span>บันทึกข้อมูลอีเมล</span>
+                  <span>บันทึกข้อมูลส่วนตัว</span>
                 )}
               </button>
             </div>
@@ -390,6 +443,52 @@ export default function ProfilePage() {
               </button>
             </div>
           </form>
+        </div>
+
+        {/* Card 3: Account Deletion (Danger Zone) */}
+        <div className="bg-white p-6 sm:p-10 rounded-none sm:rounded-3xl border-x-0 border-y sm:border border-rose-200/80 shadow-xs flex flex-col gap-6">
+          <div className="flex items-center gap-3 pb-4 border-b border-rose-100">
+            <div className="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600 shrink-0">
+              <Trash2 className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-base sm:text-lg font-bold text-slate-900">
+                ลบบัญชีผู้ใช้
+              </h2>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">
+                การดำเนินการที่ส่งผลถาวรและไม่สามารถยกเลิกหรือกู้คืนได้
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 p-5 rounded-2xl bg-rose-50/50 border border-rose-100">
+            <div className="flex flex-col gap-1.5 max-w-xl">
+              <span className="text-sm font-extrabold text-rose-900">
+                ต้องการลบบัญชีและข้อมูลทั้งหมดของคุณหรือไม่?
+              </span>
+              <span className="text-xs text-rose-700 font-medium leading-relaxed">
+                เมื่อลบบัญชี ข้อมูลคำศัพท์ที่เคยฝึกฝน สถิติความจำ (SRS) ประวัติการเรียนรู้ และข้อมูลส่วนตัวทั้งหมดจะถูกลบออกจากระบบอย่างถาวร
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={handleDeleteAccount}
+              disabled={deleting}
+              className="cursor-pointer px-6 py-3.5 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-extrabold text-xs sm:text-sm rounded-2xl shadow-md shadow-rose-600/20 transition-all flex items-center justify-center gap-2 active:scale-95 shrink-0"
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>กำลังลบบัญชี...</span>
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4" />
+                  <span>ลบบัญชีผู้ใช้ถาวร</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>

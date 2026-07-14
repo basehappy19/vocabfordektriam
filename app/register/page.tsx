@@ -4,11 +4,20 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { UserPlus, User, Lock, Loader2, AlertCircle, ArrowLeft } from "lucide-react";
+import { UserPlus, User, Lock, Loader2, AlertCircle, ArrowLeft, GraduationCap } from "lucide-react";
+
+const GENERATION_OPTIONS = [
+  { value: "DEK69", label: "DEK 69 (สอบ TCAS 69)" },
+  { value: "DEK70", label: "DEK 70 (สอบ TCAS 70)" },
+  { value: "DEK71", label: "DEK 71 (สอบ TCAS 71)" },
+  { value: "DEK72", label: "DEK 72 (สอบ TCAS 72)" },
+  { value: "เด็กซิ่ว", label: "เด็กซิ่ว (TCAS ปีก่อน ๆ)" },
+];
 
 export default function RegisterPage() {
   const router = useRouter();
   const [username, setUsername] = useState("");
+  const [generation, setGeneration] = useState("DEK69");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +44,7 @@ export default function RegisterPage() {
       const res = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: username.trim(), password }),
+        body: JSON.stringify({ name: username.trim(), password, generation }),
       });
 
       const data = await res.json();
@@ -102,6 +111,26 @@ export default function RegisterPage() {
                 className="w-full bg-slate-50/80 border border-slate-200 rounded-2xl px-4 py-4 pl-12 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white font-medium transition-all"
               />
               <User className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2.5">
+            <label className="text-xs sm:text-sm font-bold text-slate-700 tracking-wide">
+              เด็กรุ่นไหน (รุ่นที่เตรียมสอบ TCAS)
+            </label>
+            <div className="relative">
+              <select
+                value={generation}
+                onChange={(e) => setGeneration(e.target.value)}
+                className="w-full bg-slate-50/80 border border-slate-200 rounded-2xl px-4 py-4 pl-12 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white font-bold text-slate-800 transition-all appearance-none cursor-pointer"
+              >
+                {GENERATION_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              <GraduationCap className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
           </div>
 

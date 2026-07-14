@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(request: Request) {
   try {
-    const { name, username, email, password } = await request.json();
+    const { name, username, email, password, generation } = await request.json();
     const finalUsername = (name || username || "").trim();
 
     if (!finalUsername && !email) {
@@ -22,6 +22,7 @@ export async function POST(request: Request) {
     }
 
     const cleanEmail = email && typeof email === "string" && email.trim() ? email.trim() : null;
+    const cleanGeneration = generation && typeof generation === "string" ? generation.trim() : "DEK69";
 
     const existingUser = await prisma.user.findFirst({
       where: {
@@ -52,6 +53,7 @@ export async function POST(request: Request) {
         name: finalUsername || (cleanEmail ? cleanEmail.split("@")[0] : `user_${Date.now()}`),
         email: cleanEmail,
         password: hashedPassword,
+        generation: cleanGeneration,
       },
     });
 
@@ -62,6 +64,7 @@ export async function POST(request: Request) {
         id: newUser.id,
         name: newUser.name,
         email: newUser.email,
+        generation: newUser.generation,
       },
     });
   } catch (error: any) {

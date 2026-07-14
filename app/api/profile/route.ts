@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
         id: true,
         name: true,
         email: true,
+        generation: true,
         createdAt: true,
       },
     });
@@ -53,7 +54,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, username, email, currentPassword, newPassword } = body;
+    const { name, username, email, generation, currentPassword, newPassword } = body;
 
     // Strict rule: Username cannot be edited
     if ((name && name.trim() !== user.name) || (username && username.trim() !== user.name)) {
@@ -92,7 +93,15 @@ export async function PATCH(request: NextRequest) {
       }
     }
 
-    // 2. Update Password if requested
+    // 2. Update Generation if provided
+    if (generation !== undefined && typeof generation === "string") {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { generation: generation.trim() },
+      });
+    }
+
+    // 3. Update Password if requested
     if (newPassword !== undefined && newPassword !== "") {
       if (typeof newPassword !== "string" || newPassword.length < 6) {
         return NextResponse.json({ error: "รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 6 ตัวอักษร" }, { status: 400 });
@@ -125,6 +134,7 @@ export async function PATCH(request: NextRequest) {
         id: true,
         name: true,
         email: true,
+        generation: true,
         createdAt: true,
       },
     });
@@ -137,5 +147,37 @@ export async function PATCH(request: NextRequest) {
   } catch (error) {
     console.error("[PATCH /api/profile Error]:", error);
     return NextResponse.json({ error: "เกิดข้อผิดพลาดในการบันทึกข้อมูล" }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await auth();
+    const userId = session?.user?.id;
+    const userName = session?.user?.name;
+
+    if (!userId && !userName) {
+      return NextResponse.json({ error: "กรุณาเข้าสู่ระบบเพื่อดำเนินการลบบัญชี" }, { status: 401 });
+    }
+
+    const user = await prisma.user.findFirst({
+      where: userId ? { id: userId } : { name: userName as string },
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "ไม่พบข้อมูลผู้ใช้" }, { status: 404 });
+    }
+
+    await prisma.user.delete({
+      where: { id: user.id },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: "ลบบัญชีผู้ใช้เรียบร้อยแล้ว",
+    });
+  } catch (error) {
+    console.error("[DELETE /api/profile Error]:", error);
+    return NextResponse.json({ error: "เกิดข้อผิดพลาดในการลบบัญชีผู้ใช้" }, { status: 500 });
   }
 }
