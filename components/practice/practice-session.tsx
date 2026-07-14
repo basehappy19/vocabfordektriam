@@ -481,7 +481,27 @@ export default function PracticeSession({
     if (isResetParam) {
       try { localStorage.removeItem(storageKey); } catch (e) {}
       window.history.replaceState({}, "", window.location.pathname + (selectedCollectionId ? `?collectionId=${selectedCollectionId}` : selectedCategory ? `?category=${selectedCategory}` : ""));
-      fetchNextVocab(true);
+      if (initialVocab) {
+        setHistory([
+          {
+            vocab: initialVocab,
+            mode: initialMode,
+            showAnswer: false,
+            answerStatus: "IDLE",
+            typedInput: "",
+            hasUserDrawn: false,
+            drawingDataUrl: null,
+            practiceDirection: "TH_TO_EN",
+          },
+        ]);
+        setHistoryIndex(0);
+        setVocab(initialVocab);
+        setMode(initialMode);
+        setMaxPlayedWordsCount(1);
+        setLoading(false);
+      } else {
+        fetchNextVocab(true);
+      }
       return;
     }
 
@@ -510,7 +530,27 @@ export default function PracticeSession({
 
           if (isFinishedSession || guestProgressCleared) {
             try { localStorage.removeItem(storageKey); } catch (e) {}
-            fetchNextVocab(true);
+            if (initialVocab) {
+              setHistory([
+                {
+                  vocab: initialVocab,
+                  mode: initialMode,
+                  showAnswer: false,
+                  answerStatus: "IDLE",
+                  typedInput: "",
+                  hasUserDrawn: false,
+                  drawingDataUrl: null,
+                  practiceDirection: "TH_TO_EN",
+                },
+              ]);
+              setHistoryIndex(0);
+              setVocab(initialVocab);
+              setMode(initialMode);
+              setMaxPlayedWordsCount(1);
+              setLoading(false);
+            } else {
+              fetchNextVocab(true);
+            }
             return;
           }
 
@@ -1035,10 +1075,11 @@ export default function PracticeSession({
   return (
     <div className="absolute inset-0 w-full h-full overflow-hidden text-slate-900 font-sans bg-[#f8fafc]">
       {loading ? (
-        <div className="absolute inset-0 w-full h-full flex flex-col items-center justify-center p-12 bg-[#f8fafc] gap-4 animate-pulse">
-          <div className="h-10 w-64 bg-slate-200 rounded-2xl" />
-          <div className="h-6 w-48 bg-slate-100 rounded-xl" />
-          <span className="text-sm font-semibold text-slate-400 mt-2">กำลังเตรียมคำศัพท์และแบบฝึกหัด...</span>
+        <div className="absolute inset-0 w-full h-full flex flex-col items-center justify-center p-12 bg-[#f8fafc] gap-4">
+          <div className="flex flex-col items-center gap-3 animate-fade-in">
+            <div className="w-10 h-10 rounded-full border-4 border-indigo-600 border-t-transparent animate-spin shadow-2xs" />
+            <span className="text-sm font-bold text-slate-600 tracking-wide">กำลังเตรียมคำศัพท์...</span>
+          </div>
         </div>
       ) : error ? (
         <div className="absolute inset-0 w-full h-full flex items-center justify-center p-6 bg-[#f8fafc]">
@@ -1323,7 +1364,6 @@ export default function PracticeSession({
                   {answerStatus === "CORRECT" && (
                     <div className="w-full p-4 bg-emerald-600 text-white rounded-2xl shadow-xs border border-emerald-500 flex items-center justify-between">
                       <h3 className="text-base sm:text-lg font-bold">ถูกต้อง</h3>
-                      <span className="px-3 py-1 bg-white text-emerald-900 text-xs font-bold rounded-full uppercase">+1 EXP</span>
                     </div>
                   )}
                   {answerStatus === "WRONG" && (
