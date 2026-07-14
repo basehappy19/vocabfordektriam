@@ -34,6 +34,7 @@ interface VocabData {
     progress?: {
       totalWords?: number;
       completedWords?: number;
+      wordIndex?: number;
     };
   };
 }
@@ -336,7 +337,8 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
     return () => window.removeEventListener("resize", checkDevice);
   }, []);
 
-  const fetchNextVocab = useCallback(async () => {
+  const fetchNextVocab = useCallback(async (isResetOrEvent?: boolean | any) => {
+    const isReset = typeof isResetOrEvent === "boolean" ? isResetOrEvent : false;
     setLoading(true);
     setError(null);
     setShowAnswer(false);
@@ -352,11 +354,21 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
 
     try {
       let url = `/api/vocab/next`;
-      if (selectedCollectionId) {
-        url += `?collectionId=${encodeURIComponent(selectedCollectionId)}`;
-      } else if (selectedCategory) {
-        url += `?category=${encodeURIComponent(selectedCategory)}`;
+      const params = new URLSearchParams();
+      if (selectedCollectionId) params.set("collectionId", selectedCollectionId);
+      if (selectedCategory) params.set("category", selectedCategory);
+
+      if (isReset || (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("reset") === "true")) {
+        params.set("reset", "true");
+      } else {
+        if (vocab?.id) params.set("currentWordId", vocab.id);
+        if (history.length > 0) {
+          params.set("excludeIds", history.map((h) => h.vocab.id).join(","));
+        }
       }
+
+      const paramStr = params.toString();
+      if (paramStr) url += `?${paramStr}`;
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 18000);
@@ -396,7 +408,7 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
       };
 
       setHistory((prev) => {
-        const nextList = [...prev, newItem];
+        const nextList = isReset ? [newItem] : [...prev, newItem];
         setHistoryIndex(nextList.length - 1);
         return nextList;
       });
@@ -411,11 +423,65 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
       clearTimeout(fallbackTimer);
       setLoading(false);
     }
-  }, [selectedCategory, selectedCollectionId]);
+  }, [selectedCategory, selectedCollectionId, vocab?.id, history]);
 
   useEffect(() => {
-    fetchNextVocab();
-  }, [fetchNextVocab]);
+    if (typeof window === "undefined") return;
+    const storageKey = `vocab_practice_state_${selectedCollectionId || selectedCategory || "general"}`;
+    const isResetParam = new URLSearchParams(window.location.search).get("reset") === "true";
+
+    if (isResetParam) {
+      try { localStorage.removeItem(storageKey); } catch (e) {}
+      window.history.replaceState({}, "", window.location.pathname + (selectedCollectionId ? `?collectionId=${selectedCollectionId}` : selectedCategory ? `?category=${selectedCategory}` : ""));
+      fetchNextVocab(true);
+      return;
+    }
+
+    try {
+      const savedStr = localStorage.getItem(storageKey);
+      if (savedStr) {
+        const saved = JSON.parse(savedStr);
+        if (saved && Array.isArray(saved.history) && saved.history.length > 0 && typeof saved.historyIndex === "number" && saved.history[saved.historyIndex]) {
+          setHistory(saved.history);
+          setHistoryIndex(saved.historyIndex);
+          setVocab(saved.history[saved.historyIndex].vocab);
+          setMode(saved.mode || "GUEST");
+          setShowAnswer(saved.history[saved.historyIndex].showAnswer || false);
+          setAnswerStatus(saved.history[saved.historyIndex].answerStatus || "IDLE");
+          setTypedInput(saved.history[saved.historyIndex].typedInput || "");
+          setPracticeDirection("TH_TO_EN");
+          if (Array.isArray(saved.recordedAnswers)) setRecordedAnswers(saved.recordedAnswers);
+          if (typeof saved.guestCompletedCount === "number") setGuestCompletedCount(saved.guestCompletedCount);
+          setLoading(false);
+          return;
+        }
+      }
+    } catch (e) {
+      console.error("Failed restoring practice state from localStorage:", e);
+    }
+
+    fetchNextVocab(false);
+  }, [selectedCollectionId, selectedCategory]); // Initial check and load on mount
+
+  useEffect(() => {
+    if (typeof window === "undefined" || history.length === 0 || historyIndex < 0 || !vocab) return;
+    const storageKey = `vocab_practice_state_${selectedCollectionId || selectedCategory || "general"}`;
+    try {
+      localStorage.setItem(
+        storageKey,
+        JSON.stringify({
+          history,
+          historyIndex,
+          recordedAnswers,
+          guestCompletedCount,
+          mode,
+          lastUpdated: Date.now(),
+        })
+      );
+    } catch (e) {
+      console.error("Error saving practice state:", e);
+    }
+  }, [history, historyIndex, recordedAnswers, guestCompletedCount, mode, vocab, selectedCollectionId, selectedCategory]);
 
   const syncCurrentToHistory = useCallback(
     (overrides: Partial<HistorySessionItem> = {}) => {
@@ -510,7 +576,7 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
         return;
       }
     }
-    fetchNextVocab();
+    fetchNextVocab(false);
   }, [historyIndex, history, syncCurrentToHistory, fetchNextVocab, vocab, recordedAnswers, openAndSaveSummary]);
 
   const handleSrsReview = async (rating: "again" | "hard" | "good" | "easy") => {
@@ -518,7 +584,7 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
     recordGuestWordCompletion(vocab.id, vocab.collectionId, vocab.category);
 
     if (mode === "GUEST") {
-      setGuestCompletedCount((prev) => prev + 1);
+      incrementGuestCountSafely();
       handleNext();
       return;
     }
@@ -616,7 +682,7 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
         newStatus = "CORRECT";
         isCorrect = true;
         recordGuestWordCompletion(vocab.id, vocab.collectionId, vocab.category);
-        if (mode === "GUEST") setGuestCompletedCount((prev) => prev + 1);
+        incrementGuestCountSafely();
       } else {
         newStatus = "WRONG";
         isCorrect = false;
@@ -648,12 +714,18 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
     }
   };
 
-  // Calculate Progress Stats
+  const incrementGuestCountSafely = useCallback(() => {
+    if (mode === "GUEST" && vocab && !recordedAnswers.some((a) => a.vocabId === vocab.id) && historyIndex >= history.length - 1) {
+      setGuestCompletedCount((prev) => prev + 1);
+    }
+  }, [mode, vocab, recordedAnswers, historyIndex, history.length]);
+
+  // Calculate Progress Stats based on exact word order in collection ("เรียงตามนั้น")
   const totalWords = vocab?.meta?.progress?.totalWords || 1;
   const dbCompleted = vocab?.meta?.progress?.completedWords || 0;
   const completedWords = mode === "AUTHENTICATED" ? dbCompleted : guestCompletedCount;
-  const currentWordNumber = Math.min(totalWords, completedWords + 1);
-  const percent = Math.min(100, Math.round((completedWords / totalWords) * 100));
+  const currentWordNumber = vocab?.meta?.progress?.wordIndex || (historyIndex >= 0 ? Math.min(totalWords, historyIndex + 1) : 1);
+  const percent = Math.min(100, Math.round((currentWordNumber / totalWords) * 100));
 
   // =========================================================================
   // RULE 1: "ถ้าถูกให้เอาคำที่ตอบเป็นหลัก และคำหลัก มาอยู่ในคำย่อย"
@@ -834,7 +906,12 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                 setRecordedAnswers([]);
                 setShowSummaryModal(false);
                 setSavedSessionSummary(null);
-                fetchNextVocab();
+                const storageKey = `vocab_practice_state_${selectedCollectionId || selectedCategory || "general"}`;
+                try { localStorage.removeItem(storageKey); } catch (e) {}
+                setHistory([]);
+                setHistoryIndex(-1);
+                setGuestCompletedCount(0);
+                fetchNextVocab(true);
               }}
               className="cursor-pointer w-full sm:w-auto px-8 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-bold text-xs sm:text-sm transition-all text-center shadow-xs"
             >
@@ -860,7 +937,7 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
             <p className="font-bold text-base">{error}</p>
             <button
               type="button"
-              onClick={fetchNextVocab}
+              onClick={() => fetchNextVocab(false)}
               className="cursor-pointer px-6 py-3 bg-rose-600 text-white rounded-xl text-xs font-bold hover:bg-rose-700 transition-colors"
             >
               ลองใหม่อีกครั้ง
@@ -890,6 +967,24 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                     </span>
                   );
                 })()}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (confirm("ต้องการเริ่มแบบฝึกซ้อมชุดนี้ใหม่ตั้งแต่ต้น (สุ่มคำเริ่มต้นใหม่) หรือไม่?")) {
+                      const storageKey = `vocab_practice_state_${selectedCollectionId || selectedCategory || "general"}`;
+                      try { localStorage.removeItem(storageKey); } catch (e) {}
+                      setHistory([]);
+                      setHistoryIndex(-1);
+                      setRecordedAnswers([]);
+                      setGuestCompletedCount(0);
+                      fetchNextVocab(true);
+                    }
+                  }}
+                  className="cursor-pointer px-2.5 py-1 bg-slate-100 hover:bg-rose-50 hover:text-rose-600 rounded-lg text-[11px] font-bold text-slate-600 transition-all border border-slate-200/80"
+                  title="เริ่มฝึกฝนใหม่ตั้งแต่ต้น"
+                >
+                  เริ่มใหม่
+                </button>
               </div>
 
               {/* Word Progress Bar (% & Counter) */}
@@ -958,7 +1053,7 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                       if (vocab && checkIsCorrectAnswer(val, vocab, practiceDirection)) {
                         setAnswerStatus("CORRECT");
                         recordGuestWordCompletion(vocab.id, vocab.collectionId, vocab.category);
-                        if (mode === "GUEST") setGuestCompletedCount((prev) => prev + 1);
+                        incrementGuestCountSafely();
                         setShowAnswer(true);
                         syncCurrentToHistory({ typedInput: val, answerStatus: "CORRECT", showAnswer: true });
 
@@ -983,7 +1078,7 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                         if (vocab && checkIsCorrectAnswer(typedInput, vocab, practiceDirection)) {
                           setAnswerStatus("CORRECT");
                           recordGuestWordCompletion(vocab.id, vocab.collectionId, vocab.category);
-                          if (mode === "GUEST") setGuestCompletedCount((prev) => prev + 1);
+                          incrementGuestCountSafely();
                           setShowAnswer(true);
                           syncCurrentToHistory({ typedInput: typedInput.trim(), answerStatus: "CORRECT", showAnswer: true });
 
@@ -1042,7 +1137,7 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                         if (vocab && checkIsCorrectAnswer(typedInput, vocab, practiceDirection)) {
                           setAnswerStatus("CORRECT");
                           recordGuestWordCompletion(vocab.id, vocab.collectionId, vocab.category);
-                          if (mode === "GUEST") setGuestCompletedCount((prev) => prev + 1);
+                          incrementGuestCountSafely();
                           setShowAnswer(true);
                           syncCurrentToHistory({ typedInput: typedInput.trim(), answerStatus: "CORRECT", showAnswer: true });
 
@@ -1205,10 +1300,7 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                             ย้อนกลับ
                           </button>
                           <button
-                            onClick={() => {
-                              setGuestCompletedCount((prev) => prev + 1);
-                              handleNext();
-                            }}
+                            onClick={handleNext}
                             className="cursor-pointer flex-1 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl shadow-xs transition-all text-center text-base"
                           >
                             คำศัพท์ถัดไป

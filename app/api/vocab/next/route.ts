@@ -40,12 +40,17 @@ export async function GET(request: NextRequest) {
       setTimeout(() => reject(new Error("ฐานข้อมูลใช้เวลานานเกินกำหนด (Timeout)")), 3500)
     );
 
-    // Single fast query for total count
-    const totalCount: number = await Promise.race([
-      prisma.vocabulary.count({ where: whereFilter }),
+    // Query all stable IDs for this filter to get exact 1-based order (wordIndex) and support sequential practice
+    const allIdsQuery = await Promise.race([
+      prisma.vocabulary.findMany({
+        where: whereFilter,
+        select: { id: true },
+        orderBy: { id: "asc" },
+      }),
       dbTimeout,
     ]);
 
+    const totalCount: number = allIdsQuery.length;
     if (totalCount === 0) {
       return NextResponse.json(
         { error: "ไม่พบคำศัพท์ในหมวดหมู่หรือ Collection ที่เลือก" },
@@ -138,16 +143,41 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Fallback to fast random query for Guest or if no specific user selection found
+    // Fallback or Guest mode handling: Sequential progress ("ทำต่อไม่สุ่ม") vs Reset / Random ("สุ่มเฉพาะคนที่ไม่เคยทำ หรือกดเริ่มใหม่")
     if (!selectedVocab) {
-      const skip = Math.floor(Math.random() * totalCount);
-      selectedVocab = await Promise.race([
-        prisma.vocabulary.findFirst({
-          where: whereFilter,
-          skip,
-        }),
-        dbTimeout,
-      ]);
+      const currentWordId = searchParams.get("currentWordId");
+      const excludeIdsParam = searchParams.get("excludeIds");
+      const excludeIds = excludeIdsParam ? excludeIdsParam.split(",").filter(Boolean) : [];
+      const isResetOrRandom = searchParams.get("reset") === "true" || searchParams.get("random") === "true";
+
+      if (!isResetOrRandom && (currentWordId || excludeIds.length > 0)) {
+        let targetId: string | null = null;
+        if (currentWordId) {
+          const currIdx = allIdsQuery.findIndex((v: any) => v.id === currentWordId);
+          if (currIdx !== -1 && currIdx + 1 < allIdsQuery.length) {
+            targetId = allIdsQuery[currIdx + 1].id;
+          }
+        }
+        if (!targetId) {
+          const firstUnvisited = allIdsQuery.find((v: any) => !excludeIds.includes(v.id));
+          targetId = firstUnvisited ? firstUnvisited.id : allIdsQuery[0].id;
+        }
+
+        selectedVocab = await Promise.race([
+          prisma.vocabulary.findUnique({ where: { id: targetId } }),
+          dbTimeout,
+        ]);
+      } else {
+        // First time or reset: pick a random starting word from the collection
+        const skip = Math.floor(Math.random() * totalCount);
+        selectedVocab = await Promise.race([
+          prisma.vocabulary.findFirst({
+            where: whereFilter,
+            skip,
+          }),
+          dbTimeout,
+        ]);
+      }
     }
 
     if (!selectedVocab) {
@@ -156,6 +186,8 @@ export async function GET(request: NextRequest) {
         { status: 404 }
       );
     }
+
+    const wordIndex = allIdsQuery.findIndex((v: any) => v.id === selectedVocab.id) + 1;
 
     let completedCount = 0;
     if (!isGuest && userId) {
@@ -228,6 +260,7 @@ export async function GET(request: NextRequest) {
             progress: {
               totalWords: totalCount || 1,
               completedWords: completedCount || 0,
+              wordIndex: wordIndex || 1,
             },
           },
         },
