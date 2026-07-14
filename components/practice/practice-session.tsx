@@ -6,6 +6,7 @@ import TTSButton from "@/components/tts/tts-button";
 import { getCefrBadgeProps, getCefrFromNumber } from "@/lib/cefr";
 import { recordGuestWordCompletion, getCompletedWordIds, recordCollectionPlaySession, GuestSessionHistoryItem } from "@/lib/progress";
 import { getCollectionMeta } from "@/lib/collection-meta";
+import { getCleanWordExample } from "@/lib/word-examples";
 
 interface VocabData {
   id: string;
@@ -298,6 +299,7 @@ export default function PracticeSession({
   // History Stack for Previous / Back navigation
   const [history, setHistory] = useState<HistorySessionItem[]>([]);
   const [historyIndex, setHistoryIndex] = useState<number>(-1);
+  const [maxPlayedWordsCount, setMaxPlayedWordsCount] = useState<number>(1);
 
   // Practice Session Summary and DB Recording
   const [recordedAnswers, setRecordedAnswers] = useState<SessionRecordedAnswer[]>([]);
@@ -379,6 +381,11 @@ export default function PracticeSession({
 
   const fetchNextVocab = useCallback(async (isResetOrEvent?: boolean | any) => {
     const isReset = typeof isResetOrEvent === "boolean" ? isResetOrEvent : false;
+    if (isReset) {
+      setMaxPlayedWordsCount(1);
+      setHistory([]);
+      setHistoryIndex(-1);
+    }
     setLoading(true);
     setError(null);
     setShowAnswer(false);
@@ -492,6 +499,7 @@ export default function PracticeSession({
           setPracticeDirection("TH_TO_EN");
           if (Array.isArray(saved.recordedAnswers)) setRecordedAnswers(saved.recordedAnswers);
           if (typeof saved.guestCompletedCount === "number") setGuestCompletedCount(saved.guestCompletedCount);
+          if (typeof saved.maxPlayedWordsCount === "number") setMaxPlayedWordsCount(saved.maxPlayedWordsCount);
           setLoading(false);
           return;
         }
@@ -516,6 +524,7 @@ export default function PracticeSession({
       setHistoryIndex(0);
       setVocab(initialVocab);
       setMode(initialMode);
+      setMaxPlayedWordsCount(initialVocab.meta?.progress?.wordIndex || 1);
       setLoading(false);
       return;
     }
@@ -534,6 +543,7 @@ export default function PracticeSession({
           historyIndex,
           recordedAnswers,
           guestCompletedCount,
+          maxPlayedWordsCount,
           mode,
           lastUpdated: Date.now(),
         })
@@ -541,7 +551,7 @@ export default function PracticeSession({
     } catch (e) {
       console.error("Error saving practice state:", e);
     }
-  }, [history, historyIndex, recordedAnswers, guestCompletedCount, mode, vocab, selectedCollectionId, selectedCategory]);
+  }, [history, historyIndex, recordedAnswers, guestCompletedCount, maxPlayedWordsCount, mode, vocab, selectedCollectionId, selectedCategory]);
 
   const syncCurrentToHistory = useCallback(
     (overrides: Partial<HistorySessionItem> = {}) => {
@@ -782,14 +792,23 @@ export default function PracticeSession({
 
   // Calculate Progress Stats based on exact word order in collection ("เรียงตามนั้น")
   const totalWords = vocab?.meta?.progress?.totalWords || 1;
+
+  useEffect(() => {
+    if (vocab && totalWords > 0 && !loading && historyIndex >= 0) {
+      const currentIdx = vocab.meta?.progress?.wordIndex || (historyIndex + 1);
+      setMaxPlayedWordsCount((prev) => Math.min(totalWords, Math.max(prev || 1, currentIdx, history.length || 1)));
+    }
+  }, [vocab, history.length, historyIndex, totalWords, loading]);
   const dbCompleted = vocab?.meta?.progress?.completedWords || 0;
   const activeColKey = selectedCollectionId || vocab?.collectionId || selectedCategory || "";
   const guestStorageCount = isMounted && activeColKey ? getCompletedWordIds(activeColKey).length : 0;
-  const completedWords = mode === "AUTHENTICATED"
+  const rawCompleted = mode === "AUTHENTICATED"
     ? dbCompleted
     : (isMounted ? Math.max(guestStorageCount, guestCompletedCount) : (dbCompleted || guestCompletedCount));
+  const completedWords = Math.min(totalWords, rawCompleted);
   const currentWordNumber = vocab?.meta?.progress?.wordIndex || (historyIndex >= 0 ? Math.min(totalWords, historyIndex + 1) : 1);
-  const completedPercent = Math.min(100, Math.round((completedWords / totalWords) * 100));
+  const playedWordsCount = Math.min(totalWords, Math.max(1, maxPlayedWordsCount, history.length, currentWordNumber));
+  const playedPercent = totalWords > 0 ? Math.min(100, Math.round((playedWordsCount / totalWords) * 100)) : 0;
 
   // =========================================================================
   // RULE 1: "ถ้าถูกให้เอาคำที่ตอบเป็นหลัก และคำหลัก มาอยู่ในคำย่อย"
@@ -975,6 +994,7 @@ export default function PracticeSession({
                 setHistory([]);
                 setHistoryIndex(-1);
                 setGuestCompletedCount(0);
+                setMaxPlayedWordsCount(1);
                 fetchNextVocab(true);
               }}
               className="cursor-pointer w-full sm:w-auto px-8 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-bold text-xs sm:text-sm transition-all text-center shadow-xs"
@@ -1048,6 +1068,7 @@ export default function PracticeSession({
                       setHistoryIndex(-1);
                       setRecordedAnswers([]);
                       setGuestCompletedCount(0);
+                      setMaxPlayedWordsCount(1);
                       fetchNextVocab(true);
                     }
                   }}
@@ -1063,14 +1084,14 @@ export default function PracticeSession({
                 <div className="w-full sm:w-80 flex flex-col gap-1.5">
                   <div className="flex items-center justify-between text-xs font-bold text-slate-700">
                     <span>
-                      คำที่ {currentWordNumber} / {totalWords} | ความคืบหน้า {completedWords} คำ
+                      เล่นไปแล้ว {playedWordsCount} / {totalWords} คำ
                     </span>
-                    <span className="text-indigo-600 font-mono font-bold">{completedPercent}%</span>
+                    <span className="text-indigo-600 font-mono font-bold">{playedPercent}%</span>
                   </div>
                   <div className="w-full h-2 bg-slate-200/80 rounded-full overflow-hidden p-0 border border-slate-200">
                     <div
                       className="h-full bg-indigo-600 rounded-full transition-all duration-500 ease-out"
-                      style={{ width: `${completedPercent}%` }}
+                      style={{ width: `${playedPercent}%` }}
                     />
                   </div>
                 </div>
@@ -1094,7 +1115,10 @@ export default function PracticeSession({
           >
             <div className="w-full max-w-3xl mx-auto my-auto flex flex-col items-center justify-center gap-8 py-4">
               {!showAnswer && (
-                <div className="text-center flex flex-col gap-2">
+                <div className="text-center flex flex-col items-center gap-2.5">
+                  <div className="inline-flex items-center justify-center px-4 py-1.5 rounded-full bg-indigo-50 border border-indigo-200/80 text-indigo-700 text-xs font-bold tracking-wide shadow-2xs">
+                    <span>คำที่ {currentWordNumber} / {totalWords}</span>
+                  </div>
                   <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
                     คำแปลภาษาไทย (เขียนหรือพิมพ์คำศัพท์อังกฤษ)
                   </span>
@@ -1266,6 +1290,11 @@ export default function PracticeSession({
                       : "bg-white/95 backdrop-blur-xl border-slate-200"
                   }`}
                 >
+                  <div className="flex items-center justify-between pb-1 border-b border-slate-200/60">
+                    <span className="inline-flex items-center justify-center px-3.5 py-1 rounded-full bg-indigo-50 border border-indigo-200/80 text-indigo-700 text-xs font-bold tracking-wide">
+                      คำที่ {currentWordNumber} / {totalWords}
+                    </span>
+                  </div>
                   {answerStatus === "CORRECT" && (
                     <div className="w-full p-4 bg-emerald-600 text-white rounded-2xl shadow-xs border border-emerald-500 flex items-center justify-between">
                       <h3 className="text-base sm:text-lg font-bold">ถูกต้อง</h3>
@@ -1307,18 +1336,21 @@ export default function PracticeSession({
                     )}
                   </div>
 
-                  {vocab.exampleSentence && (
-                    <blockquote className="p-4 bg-white/80 rounded-2xl border-l-4 border-indigo-600 flex flex-col gap-1.5 text-left shadow-2xs">
-                      <p className="text-sm sm:text-base font-medium text-slate-900 italic">
-                        &ldquo;{renderFormattedSentence(vocab.exampleSentence)}&rdquo;
-                      </p>
-                      {vocab.exampleTarget && (
-                        <p className="text-xs font-semibold text-slate-700 pt-1 border-t border-slate-200/60">
-                          คำแปล: {vocab.exampleTarget}
+                  {(() => {
+                    const ex = getCleanWordExample(vocab.word, vocab.exampleSentence, vocab.exampleTarget);
+                    return ex.exampleSentence ? (
+                      <blockquote className="p-4 bg-white/80 rounded-2xl border-l-4 border-indigo-600 flex flex-col gap-1.5 text-left shadow-2xs">
+                        <p className="text-sm sm:text-base font-medium text-slate-900 italic">
+                          &ldquo;{renderFormattedSentence(ex.exampleSentence)}&rdquo;
                         </p>
-                      )}
-                    </blockquote>
-                  )}
+                        {ex.exampleTarget && (
+                          <p className="text-xs font-semibold text-slate-700 pt-1 border-t border-slate-200/60">
+                            คำแปล: {ex.exampleTarget}
+                          </p>
+                        )}
+                      </blockquote>
+                    ) : null;
+                  })()}
 
                   <div className="flex flex-col gap-3 pt-2 border-t border-slate-200/80">
                     {mode === "AUTHENTICATED" ? (
@@ -1371,12 +1403,23 @@ export default function PracticeSession({
                             onClick={handleNext}
                             className="cursor-pointer flex-1 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl shadow-xs transition-all text-center text-base"
                           >
-                            คำศัพท์ถัดไป
+                            {(currentWordNumber >= totalWords || playedWordsCount >= totalWords) && historyIndex >= history.length - 1
+                              ? "ดูสรุปผล"
+                              : "คำศัพท์ถัดไป"}
                           </button>
                         </div>
                       )}
                       {mode === "AUTHENTICATED" && (
-                        <div className="flex justify-start pt-1">
+                        <div className="flex flex-col sm:flex-row items-center gap-3 pt-1 w-full">
+                          {(currentWordNumber >= totalWords || playedWordsCount >= totalWords) && historyIndex >= history.length - 1 && (
+                            <button
+                              type="button"
+                              onClick={handleNext}
+                              className="cursor-pointer flex-1 py-3 px-5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm shadow-xs transition-all text-center"
+                            >
+                              ดูสรุปผล
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={handlePrev}

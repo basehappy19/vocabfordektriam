@@ -168,11 +168,13 @@ export async function GET(request: NextRequest) {
           dbTimeout,
         ]);
       } else {
-        // First time or reset: pick a random starting word from the collection
-        const skip = Math.floor(Math.random() * totalCount);
+        // First time or reset: if reset=true pick exact first word (skip=0), if random=true pick random word
+        const isExactReset = searchParams.get("reset") === "true";
+        const skip = isExactReset ? 0 : Math.floor(Math.random() * totalCount);
         selectedVocab = await Promise.race([
           prisma.vocabulary.findFirst({
             where: whereFilter,
+            orderBy: { id: "asc" },
             skip,
           }),
           dbTimeout,

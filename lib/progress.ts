@@ -56,7 +56,8 @@ export function recordGuestWordCompletion(wordId: string, collectionId?: string 
 
 export function getCompletedWordIds(key: string): string[] {
   const map = getGuestProgressMap();
-  return map[key]?.completedWordIds || [];
+  const ids = map[key]?.completedWordIds || [];
+  return Array.from(new Set(ids));
 }
 
 export interface GuestSessionHistoryItem {

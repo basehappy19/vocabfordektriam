@@ -35,13 +35,13 @@ export default function CollectionCard({
     setPlayCount(pCount);
     if (isGuest) {
       const guestIds = getCompletedWordIds(collection.id);
-      setCompletedCount(guestIds.length);
+      setCompletedCount(Math.min(guestIds.length, collection.totalWordsCount));
     } else {
-      setCompletedCount(dbCompletedCount);
+      setCompletedCount(Math.min(dbCompletedCount, collection.totalWordsCount));
     }
-  }, [isGuest, collection.id, dbCompletedCount]);
+  }, [isGuest, collection.id, dbCompletedCount, collection.totalWordsCount]);
 
-  const percent = collection.totalWordsCount > 0 ? Math.round((completedCount / collection.totalWordsCount) * 100) : 0;
+  const percent = collection.totalWordsCount > 0 ? Math.round((Math.min(completedCount, collection.totalWordsCount) / collection.totalWordsCount) * 100) : 0;
 
   // Clean title & description to ensure no brackets or emojis
   const cleanTitle = collection.title.replace(/\s*\([^)]*\)/g, "").trim();
@@ -57,7 +57,7 @@ export default function CollectionCard({
             </span>
             {playCount > 0 && (
               <span className="text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/70 shadow-2xs flex items-center gap-1">
-                🎮 เล่นไปแล้ว {playCount} ครั้ง
+                เล่นไปแล้ว {playCount} ครั้ง
               </span>
             )}
           </div>

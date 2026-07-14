@@ -93,20 +93,20 @@ export default function LoginPage() {
             disabled={loading}
             className="mt-2 w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-extrabold text-sm sm:text-base rounded-2xl shadow-lg shadow-indigo-600/25 transition-all flex items-center justify-center gap-2 active:scale-98"
           >
-            {loading ? <span>กำลังเข้าสู่ระบบ...</span> : <span>🔐 เข้าสู่ระบบทันที</span>}
+            {loading ? <span>กำลังเข้าสู่ระบบ...</span> : <span>เข้าสู่ระบบทันที</span>}
           </button>
         </form>
 
         <div className="pt-4 border-t border-slate-100 text-center text-xs sm:text-sm text-slate-600 font-medium">
           ยังไม่มีบัญชีผู้ใช้?{" "}
           <Link href="/register" className="text-indigo-600 font-extrabold hover:underline">
-            สมัครสมาชิกใหม่ที่นี่ 🚀
+            สมัครสมาชิกใหม่ที่นี่
           </Link>
         </div>
 
         <div className="text-center">
           <Link href="/" className="text-xs text-slate-400 hover:text-slate-600 font-bold">
-            ⬅️ กลับไปใช้แบบ Guest Mode โดยไม่ต้องล็อกอิน
+            กลับไปใช้แบบ Guest Mode โดยไม่ต้องล็อกอิน
           </Link>
         </div>
       </div>
