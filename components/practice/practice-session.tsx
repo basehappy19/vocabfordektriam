@@ -1410,16 +1410,38 @@ export default function PracticeSession({
                   {(() => {
                     const ex = getCleanWordExample(vocab.word, vocab.exampleSentence, vocab.exampleTarget);
                     return ex.exampleSentence ? (
-                      <blockquote className="p-4 bg-white/80 rounded-2xl border-l-4 border-indigo-600 flex flex-col gap-1.5 text-left shadow-2xs">
-                        <p className="text-sm sm:text-base font-medium text-slate-900 italic">
-                          &ldquo;{renderFormattedSentence(ex.exampleSentence)}&rdquo;
-                        </p>
-                        {ex.exampleTarget && (
-                          <p className="text-xs font-semibold text-slate-700 pt-1 border-t border-slate-200/60">
-                            คำแปล: {ex.exampleTarget}
+                      <div className="flex flex-col gap-2 pt-1 w-full text-left">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                            <span>💡 ประโยคตัวอย่างเตรียมสอบ (Example Sentence)</span>
+                            {vocab.meta?.wasAiGenerated ? (
+                              <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold">
+                                🤖 AI Generated Now (Lazy-Cached to DB)
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] font-bold">
+                                ⚡ Served Direct from DB (No AI Cost)
+                              </span>
+                            )}
+                          </span>
+                          <TTSButton
+                            text={ex.exampleSentence}
+                            lang="en-US"
+                            size="sm"
+                            label="ฟังประโยค"
+                          />
+                        </div>
+                        <blockquote className="p-4 bg-white rounded-xl border-l-4 border-indigo-500 shadow-xs flex flex-col gap-1.5 text-left">
+                          <p className="text-base sm:text-lg font-medium text-slate-800 italic">
+                            &ldquo;{renderFormattedSentence(ex.exampleSentence)}&rdquo;
                           </p>
-                        )}
-                      </blockquote>
+                          {ex.exampleTarget && (
+                            <p className="text-sm font-semibold text-slate-600">
+                              🇹🇭 คำแปล: {ex.exampleTarget}
+                            </p>
+                          )}
+                        </blockquote>
+                      </div>
                     ) : null;
                   })()}
 

@@ -86,8 +86,8 @@ export function getCleanWordExample(
 
   if (isValidSentence && isValidTarget) {
     return {
-      exampleSentence: dbSentence!.replace(/[\u10000-\u10FFFF]/g, "").trim(),
-      exampleTarget: dbTarget!.replace(/\s*\([^)]*\)/g, "").replace(/[\u10000-\u10FFFF]/g, "").trim(),
+      exampleSentence: dbSentence!.replace(/[\u{10000}-\u{10FFFF}]/gu, "").trim(),
+      exampleTarget: dbTarget!.replace(/\s*\([^)]*\)/g, "").replace(/[\u{10000}-\u{10FFFF}]/gu, "").trim(),
     };
   }
 
