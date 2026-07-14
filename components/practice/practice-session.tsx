@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import CanvasLoader from "@/components/canvas/canvas-loader";
 import TTSButton from "@/components/tts/tts-button";
 import { getCefrBadgeProps, getCefrFromNumber } from "@/lib/cefr";
 import { recordGuestWordCompletion } from "@/lib/progress";
@@ -164,6 +163,15 @@ const SYNONYM_PHONETIC_DICTIONARY: Record<string, string> = {
   ineluctable: "in-ih-LUK-tuh-bul",
   destined: "DES-tind",
   sure: "sh-OOR",
+};
+
+const COLLECTION_TITLES: Record<string, string> = {
+  "tgat1-68": "TGAT 1 ปี 2568",
+  "tgat1-67": "TGAT 1 ปี 2567",
+  "tgat1-66": "TGAT 1 ปี 2566",
+  "alevel-68": "A-Level ปี 2568",
+  "alevel-67": "A-Level ปี 2567",
+  "alevel-66": "A-Level ปี 2566",
 };
 
 function getPhoneticForWord(word: string, vocab?: VocabData | null): string {
@@ -371,7 +379,7 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
       }
 
       const json = await res.json();
-      const newDirection: "TH_TO_EN" | "EN_TO_TH" = Math.random() > 0.3 ? "TH_TO_EN" : "EN_TO_TH";
+      const newDirection: "TH_TO_EN" | "EN_TO_TH" = "TH_TO_EN";
       setVocab(json.data);
       setMode(json.mode);
       setPracticeDirection(newDirection);
@@ -869,10 +877,10 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                   href={vocab.collectionId ? `/collection/${vocab.collectionId}` : "/"}
                   className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold text-slate-700 transition-all"
                 >
-                  <span>กลับไปหน้ารวม</span>
+                  <span>กลับหน้าหลัก</span>
                 </Link>
                 <span className="px-2.5 py-1 bg-indigo-50 text-indigo-700 rounded-md text-xs font-bold border border-indigo-200/60">
-                  {vocab.category}
+                  {COLLECTION_TITLES[vocab.collectionId || ""] || vocab.collectionId || "TGAT 1"}
                 </span>
                 {(() => {
                   const cefr = getCefrBadgeProps(vocab.cefrLevel || vocab.difficultyLevel);
@@ -908,285 +916,82 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
           </div>
 
           {/* =========================================================================
-              MODE 1: iPad / Drawing Tablet Mode (Full Screen Edge-to-Edge Canvas)
+              UNIFIED PRACTICE VIEW (All Devices: PC, Laptop, Tablet, iPad, Mobile)
+              - Background: iPad 32x32px Grid on all devices
+              - Direction: TH_TO_EN only (prompt is Thai meaning, user enters English word)
+              - Input: Standard text input (Scribble on iPad / keyboard on PC/Mobile)
               ========================================================================= */}
-          {isDrawingDevice ? (
-            <>
-              <div className="absolute inset-0 w-full h-full z-0 pt-20">
-                <CanvasLoader
-                  wordToPractice={vocab.word}
-                  showGuidelineWord={practiceDirection === "EN_TO_TH" || showAnswer}
-                  onDrawStateChange={handleDrawStateChange}
-                  initialDataUrl={drawingDataUrl}
-                  onCanvasChange={handleCanvasChange}
-                />
-              </div>
-
+          <div
+            className="absolute inset-0 w-full h-full flex flex-col justify-between p-6 sm:p-10 z-10 overflow-y-auto pt-24 sm:pt-28"
+            style={{
+              backgroundColor: "#ffffff",
+              backgroundImage: `linear-gradient(to right, #e2e8f0 1px, transparent 1px), linear-gradient(to bottom, #e2e8f0 1px, transparent 1px)`,
+              backgroundSize: "32px 32px",
+            }}
+          >
+            <div className="w-full max-w-3xl mx-auto my-auto flex flex-col items-center justify-center gap-8 py-4">
               {!showAnswer && (
-                <div className="absolute top-20 left-4 z-10 pointer-events-none flex items-center gap-2.5">
-                  <div className="pointer-events-auto flex items-center gap-2.5 bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl border border-slate-200/80 shadow-md">
-                    {practiceDirection === "TH_TO_EN" ? (
-                      <h2 className="text-xl sm:text-2xl font-black text-slate-900">{vocab.meaning}</h2>
-                    ) : (
-                      <div className="flex items-baseline gap-2">
-                        <h2 className="text-xl sm:text-2xl font-black text-slate-900">{vocab.word}</h2>
-                        {vocab.phonetic && (
-                          <span className="text-sm font-mono text-slate-500">/{vocab.phonetic}/</span>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                <div className="text-center flex flex-col gap-2">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                    คำแปลภาษาไทย (เขียนหรือพิมพ์คำศัพท์อังกฤษ)
+                  </span>
+                  <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-slate-900 tracking-tight leading-tight">
+                    {vocab.meaning}
+                  </h1>
                 </div>
               )}
 
-              <div className="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-20 pointer-events-none w-full max-w-2xl px-4 flex flex-col items-center justify-center gap-2">
-                {typedInput && !showAnswer && (
-                  <div className="pointer-events-auto bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-4 py-2 rounded-2xl border border-indigo-200 shadow-md text-sm sm:text-base font-bold text-indigo-700 flex items-center gap-2 animate-fadeIn">
-                    <span>ระบบอ่านลายมือได้เป็น: <span className="underline decoration-indigo-400 font-extrabold">{typedInput}</span></span>
-                    <button
-                      type="button"
-                      onClick={() => setTypedInput("")}
-                      className="cursor-pointer text-xs bg-rose-50 text-rose-600 px-2.5 py-1 rounded-lg border border-rose-200 hover:bg-rose-100 font-bold ml-1 transition-colors"
-                    >
-                      ลบและเขียนใหม่
-                    </button>
-                  </div>
-                )}
+              {!showAnswer ? (
+                <div className="w-full flex flex-col items-center gap-5">
+                  <input
+                    type="text"
+                    autoFocus
+                    placeholder={
+                      isDrawingDevice
+                        ? "เขียนคำศัพท์ภาษาอังกฤษที่นี่...."
+                        : "พิมพ์คำศัพท์ภาษาอังกฤษที่นี่..."
+                    }
+                    value={typedInput}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setTypedInput(val);
+                      if (vocab && checkIsCorrectAnswer(val, vocab, practiceDirection)) {
+                        setAnswerStatus("CORRECT");
+                        recordGuestWordCompletion(vocab.id, vocab.collectionId, vocab.category);
+                        if (mode === "GUEST") setGuestCompletedCount((prev) => prev + 1);
+                        setShowAnswer(true);
+                        syncCurrentToHistory({ typedInput: val, answerStatus: "CORRECT", showAnswer: true });
 
-                {!showAnswer ? (
-                  <div className="pointer-events-auto flex items-center justify-center gap-2 sm:gap-2.5 w-full sm:w-auto bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-2.5 rounded-3xl border border-slate-200/80 shadow-xl flex-wrap">
-                    <button
-                      type="button"
-                      onClick={handlePrev}
-                      disabled={historyIndex <= 0}
-                      className="cursor-pointer px-4 py-3.5 rounded-2xl font-bold text-xs sm:text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all border border-slate-200"
-                    >
-                      ย้อนกลับ
-                    </button>
+                        const answerRecord: SessionRecordedAnswer = {
+                          vocabId: vocab.id,
+                          word: vocab.word,
+                          meaning: vocab.meaning,
+                          userTypedInput: val,
+                          correctAnswerText: `${vocab.word} = ${vocab.meaning}`,
+                          isCorrect: true,
+                        };
 
-                    {hasUserDrawn && !typedInput && (
-                      <button
-                        type="button"
-                        onClick={handleOcrConvertOnly}
-                        disabled={isConvertingOcr}
-                        className="cursor-pointer px-4 py-3.5 rounded-2xl font-bold text-xs sm:text-sm bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 transition-all flex items-center gap-1.5 shadow-xs shrink-0"
-                      >
-                        {isConvertingOcr ? "กำลังแปลง..." : "แปลงลายมือเป็นข้อความ"}
-                      </button>
-                    )}
-
-                    <button
-                      type="button"
-                      disabled={!hasUserDrawn || isConvertingOcr}
-                      onClick={handleRevealClick}
-                      className={`px-6 sm:px-8 py-3.5 rounded-2xl font-bold text-sm sm:text-base transition-all flex items-center justify-center border shadow-sm shrink-0 ${
-                        hasUserDrawn && !isConvertingOcr
-                          ? "bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white border-indigo-500 cursor-pointer"
-                          : "bg-slate-200 text-slate-400 border-slate-300 cursor-not-allowed opacity-75 shadow-none"
-                      }`}
-                    >
-                      {isConvertingOcr
-                        ? "กำลังตรวจและแปลงลายมือ..."
-                        : typedInput
-                        ? "ยืนยันคำตอบ"
-                        : "แปลงและตรวจคำตอบ"}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={handleNext}
-                      className="cursor-pointer px-4 py-3.5 rounded-2xl font-bold text-xs sm:text-sm bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 transition-all"
-                    >
-                      ข้ามคำ
-                    </button>
-                  </div>
-                ) : (
-                  <div
-                    className={`pointer-events-auto w-full p-6 rounded-3xl border shadow-xl flex flex-col gap-4 max-h-[75vh] overflow-y-auto transition-all duration-300 ${
-                      answerStatus === "CORRECT"
-                        ? "bg-emerald-50/80 backdrop-blur-xl border-emerald-400"
-                        : "bg-white/95 backdrop-blur-xl border-slate-200"
-                    }`}
-                  >
-                    {/* RULE 4: "เมื่อถูกให้ทั้งแทบเป็นสีเขียวไม่ต้องเด้ง ๆ ลายตา" */}
-                    {answerStatus === "CORRECT" && (
-                      <div className="w-full p-4 bg-emerald-600 text-white rounded-2xl shadow-xs border border-emerald-500 flex items-center justify-between">
-                        <h3 className="text-base sm:text-lg font-bold">ถูกต้อง</h3>
-                        <span className="px-3 py-1 bg-white text-emerald-900 text-xs font-bold rounded-full uppercase">+1 EXP</span>
-                      </div>
-                    )}
-                    {answerStatus === "WRONG" && (
-                      <div className="w-full p-4 bg-rose-600 text-white rounded-2xl shadow-xs border border-rose-500 flex items-center gap-3">
-                        <div>
-                          <h3 className="text-base sm:text-lg font-bold">ยังไม่ถูกต้อง</h3>
-                          {typedInput && (
-                            <p className="text-xs text-rose-100 font-medium mt-0.5">
-                              คุณตอบ: &ldquo;{typedInput}&rdquo; • เฉลย: &ldquo;{vocab.word}&rdquo;
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="flex items-center justify-between p-4 bg-white/80 border border-slate-200/80 rounded-2xl shadow-2xs">
-                      <div className="flex items-baseline gap-3">
-                        <span className="text-3xl font-black text-slate-900">{displayWord}</span>
-                        {displayPhonetic && (
-                          <span className="text-base font-mono text-slate-500">/{displayPhonetic}/</span>
-                        )}
-                      </div>
-                      <TTSButton text={displayWord} lang="en-US" size="md" label="ฟังเสียงคำศัพท์" />
-                    </div>
-
-                    <div className="flex flex-col gap-1 text-left">
-                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">
-                        คำแปลภาษาไทย / ความหมายพ้อง
-                      </span>
-                      <p className="text-lg sm:text-xl font-bold text-slate-800">{vocab.meaning}</p>
-                      {displaySynonyms && displaySynonyms.length > 0 && (
-                        <p className="text-xs sm:text-sm text-indigo-600 font-medium mt-1">
-                          คำพ้องความหมาย: {displaySynonyms.join(", ")}
-                        </p>
-                      )}
-                    </div>
-
-                    {vocab.exampleSentence && (
-                      <blockquote className="p-3.5 bg-white/80 rounded-xl border-l-4 border-indigo-600 flex flex-col gap-1 text-left shadow-2xs">
-                        <p className="text-sm sm:text-base font-medium text-slate-900 italic">
-                          &ldquo;{renderFormattedSentence(vocab.exampleSentence)}&rdquo;
-                        </p>
-                        {vocab.exampleTarget && (
-                          <p className="text-xs font-semibold text-slate-700 pt-1 border-t border-slate-200/60">
-                            คำแปล: {vocab.exampleTarget}
-                          </p>
-                        )}
-                      </blockquote>
-                    )}
-
-                    <div className="flex flex-col gap-3 pt-2 border-t border-slate-200/80">
-                      {mode === "AUTHENTICATED" ? (
-                        <div className="grid grid-cols-4 gap-2">
-                          <button
-                            onClick={() => handleSrsReview("again")}
-                            disabled={isReviewing}
-                            className="cursor-pointer p-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-900 font-bold border border-rose-200 text-xs sm:text-sm transition-colors"
-                          >
-                            จำไม่ได้
-                          </button>
-                          <button
-                            onClick={() => handleSrsReview("hard")}
-                            disabled={isReviewing}
-                            className="cursor-pointer p-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold border border-amber-200 text-xs sm:text-sm transition-colors"
-                          >
-                            จำยาก
-                          </button>
-                          <button
-                            onClick={() => handleSrsReview("good")}
-                            disabled={isReviewing}
-                            className="cursor-pointer p-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-900 font-bold border border-blue-200 text-xs sm:text-sm transition-colors"
-                          >
-                            จำได้ดี
-                          </button>
-                          <button
-                            onClick={() => handleSrsReview("easy")}
-                            disabled={isReviewing}
-                            className="cursor-pointer p-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold border border-emerald-200 text-xs sm:text-sm transition-colors"
-                          >
-                            ง่ายมาก
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2.5 w-full">
-                          <button
-                            type="button"
-                            onClick={handlePrev}
-                            disabled={historyIndex <= 0}
-                            className="cursor-pointer px-4 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all border border-slate-200"
-                          >
-                            ย้อนกลับ
-                          </button>
-                          <button
-                            onClick={() => {
-                              setGuestCompletedCount((prev) => prev + 1);
-                              handleNext();
-                            }}
-                            className="cursor-pointer flex-1 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-xs text-center text-sm sm:text-base transition-all"
-                          >
-                            คำศัพท์ถัดไป
-                          </button>
-                        </div>
-                      )}
-                      {mode === "AUTHENTICATED" && (
-                        <div className="flex justify-start pt-1">
-                          <button
-                            type="button"
-                            onClick={handlePrev}
-                            disabled={historyIndex <= 0}
-                            className="cursor-pointer px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs disabled:opacity-40 disabled:cursor-not-allowed transition-all border border-slate-200"
-                          >
-                            ย้อนกลับไปคำก่อนหน้า
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </>
-          ) : (
-            /* =========================================================================
-               MODE 2: Non-iPad PC / Desktop / Laptop / Mobile (Full-Screen Big Typing)
-               ========================================================================= */
-            <div className="absolute inset-0 w-full h-full flex flex-col justify-between p-6 sm:p-10 z-10 bg-[#f8fafc] overflow-y-auto pt-24 sm:pt-28">
-              <div className="w-full max-w-3xl mx-auto my-auto flex flex-col items-center justify-center gap-8 py-4">
-                {!showAnswer && (
-                  <div className="text-center flex flex-col gap-2">
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                      {practiceDirection === "TH_TO_EN" ? "คำแปลภาษาไทย (พิมพ์คำศัพท์อังกฤษ)" : "คำศัพท์อังกฤษ (แปลความหมาย)"}
-                    </span>
-                    {practiceDirection === "TH_TO_EN" ? (
-                      <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-slate-900 tracking-tight leading-tight">
-                        {vocab.meaning}
-                      </h1>
-                    ) : (
-                      <div className="flex flex-col items-center gap-1">
-                        <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-slate-900 tracking-tight">
-                          {vocab.word}
-                        </h1>
-                        {vocab.phonetic && (
-                          <span className="text-lg sm:text-xl font-mono text-slate-400">/{vocab.phonetic}/</span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {!showAnswer ? (
-                  <div className="w-full flex flex-col items-center gap-5">
-                    <input
-                      type="text"
-                      autoFocus
-                      placeholder={
-                        practiceDirection === "TH_TO_EN"
-                          ? "พิมพ์คำศัพท์ภาษาอังกฤษที่นี่..."
-                          : "พิมพ์ความหมายภาษาไทย..."
+                        setRecordedAnswers((prev) => {
+                          if (prev.some((a) => a.vocabId === vocab.id)) return prev;
+                          return [...prev, answerRecord];
+                        });
                       }
-                      value={typedInput}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setTypedInput(val);
-                        if (vocab && checkIsCorrectAnswer(val, vocab, practiceDirection)) {
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && typedInput.trim()) {
+                        e.preventDefault();
+                        if (vocab && checkIsCorrectAnswer(typedInput, vocab, practiceDirection)) {
                           setAnswerStatus("CORRECT");
                           recordGuestWordCompletion(vocab.id, vocab.collectionId, vocab.category);
                           if (mode === "GUEST") setGuestCompletedCount((prev) => prev + 1);
                           setShowAnswer(true);
-                          syncCurrentToHistory({ typedInput: val, answerStatus: "CORRECT", showAnswer: true });
+                          syncCurrentToHistory({ typedInput: typedInput.trim(), answerStatus: "CORRECT", showAnswer: true });
 
                           const answerRecord: SessionRecordedAnswer = {
                             vocabId: vocab.id,
                             word: vocab.word,
                             meaning: vocab.meaning,
-                            userTypedInput: val,
+                            userTypedInput: typedInput.trim(),
                             correctAnswerText: `${vocab.word} = ${vocab.meaning}`,
                             isCorrect: true,
                           };
@@ -1196,145 +1001,200 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                             return [...prev, answerRecord];
                           });
                         } else {
-                          syncCurrentToHistory({ typedInput: val });
+                          setAnswerStatus("WRONG");
+                          setShowAnswer(true);
+                          syncCurrentToHistory({ typedInput: typedInput.trim(), answerStatus: "WRONG", showAnswer: true });
+
+                          if (vocab) {
+                            const answerRecord: SessionRecordedAnswer = {
+                              vocabId: vocab.id,
+                              word: vocab.word,
+                              meaning: vocab.meaning,
+                              userTypedInput: typedInput.trim(),
+                              correctAnswerText: `${vocab.word} = ${vocab.meaning}`,
+                              isCorrect: false,
+                            };
+
+                            setRecordedAnswers((prev) => {
+                              if (prev.some((a) => a.vocabId === vocab.id)) return prev;
+                              return [...prev, answerRecord];
+                            });
+                          }
+                        }
+                      }
+                    }}
+                    className="w-full max-w-2xl px-6 py-5 rounded-2xl border-2 border-slate-300 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 outline-none text-center text-xl sm:text-2xl font-bold font-mono text-slate-800 placeholder:text-slate-400 placeholder:font-sans transition-all shadow-sm bg-white/95"
+                  />
+
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={handlePrev}
+                      disabled={historyIndex <= 0}
+                      className="cursor-pointer px-5 py-3 rounded-xl font-bold text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all border border-slate-200"
+                    >
+                      ย้อนกลับ
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!typedInput.trim()) return;
+                        if (vocab && checkIsCorrectAnswer(typedInput, vocab, practiceDirection)) {
+                          setAnswerStatus("CORRECT");
+                          recordGuestWordCompletion(vocab.id, vocab.collectionId, vocab.category);
+                          if (mode === "GUEST") setGuestCompletedCount((prev) => prev + 1);
+                          setShowAnswer(true);
+                          syncCurrentToHistory({ typedInput: typedInput.trim(), answerStatus: "CORRECT", showAnswer: true });
+
+                          const answerRecord: SessionRecordedAnswer = {
+                            vocabId: vocab.id,
+                            word: vocab.word,
+                            meaning: vocab.meaning,
+                            userTypedInput: typedInput.trim(),
+                            correctAnswerText: `${vocab.word} = ${vocab.meaning}`,
+                            isCorrect: true,
+                          };
+
+                          setRecordedAnswers((prev) => {
+                            if (prev.some((a) => a.vocabId === vocab.id)) return prev;
+                            return [...prev, answerRecord];
+                          });
+                        } else {
+                          setAnswerStatus("WRONG");
+                          setShowAnswer(true);
+                          syncCurrentToHistory({ typedInput: typedInput.trim(), answerStatus: "WRONG", showAnswer: true });
+
+                          if (vocab) {
+                            const answerRecord: SessionRecordedAnswer = {
+                              vocabId: vocab.id,
+                              word: vocab.word,
+                              meaning: vocab.meaning,
+                              userTypedInput: typedInput.trim(),
+                              correctAnswerText: `${vocab.word} = ${vocab.meaning}`,
+                              isCorrect: false,
+                            };
+
+                            setRecordedAnswers((prev) => {
+                              if (prev.some((a) => a.vocabId === vocab.id)) return prev;
+                              return [...prev, answerRecord];
+                            });
+                          }
                         }
                       }}
-                      className="w-full text-2xl sm:text-4xl font-extrabold text-center py-6 px-8 bg-white border-2 border-slate-300 focus:border-indigo-600 rounded-3xl shadow-md focus:outline-none focus:ring-4 focus:ring-indigo-100 transition-all text-slate-900 placeholder:text-slate-300 placeholder:font-normal placeholder:text-xl sm:placeholder:text-2xl"
-                    />
-
-                    <div className="flex items-center justify-center gap-3 mt-1 flex-wrap w-full sm:w-auto">
-                      <button
-                        type="button"
-                        onClick={handlePrev}
-                        disabled={historyIndex <= 0}
-                        className="cursor-pointer px-5 py-3.5 rounded-2xl font-bold text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all border border-slate-200 shadow-xs"
-                      >
-                        ย้อนกลับ
-                      </button>
-
-                      <button
-                        type="button"
-                        disabled={!typedInput.trim()}
-                        onClick={handleRevealClick}
-                        className={`px-8 py-3.5 rounded-2xl text-base font-bold transition-all border shadow-sm flex items-center justify-center ${
-                          typedInput.trim().length > 0
-                            ? "bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white border-indigo-500 cursor-pointer"
-                            : "bg-slate-200 text-slate-400 border-slate-300 cursor-not-allowed opacity-70 shadow-none"
-                        }`}
-                      >
-                        ยืนยันคำตอบ
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={handleNext}
-                        className="cursor-pointer px-5 py-3.5 rounded-2xl font-bold text-sm bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 transition-all shadow-xs"
-                      >
-                        ข้ามคำ
-                      </button>
-                    </div>
+                      disabled={!typedInput.trim()}
+                      className="cursor-pointer px-6 py-3 rounded-xl font-bold text-sm bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-xs"
+                    >
+                      ยืนยันคำตอบ
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleNext}
+                      className="cursor-pointer px-5 py-3 rounded-xl font-bold text-sm bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 transition-all"
+                    >
+                      ข้ามคำ
+                    </button>
                   </div>
-                ) : (
-                  <div className="w-full p-6 sm:p-8 rounded-3xl border transition-all duration-300 flex flex-col gap-6 bg-white border-slate-200 shadow-xl">
-                    {/* RULE 4: "เมื่อถูกให้ทั้งแทบเป็นสีเขียวไม่ต้องเด้ง ๆ ลายตา" */}
-                    {answerStatus === "CORRECT" && (
-                      <div className="w-full p-4.5 bg-emerald-600 text-white rounded-2xl shadow-xs border border-emerald-500 flex items-center justify-between transition-all duration-300">
-                        <h3 className="text-lg sm:text-xl font-bold">ถูกต้อง</h3>
-                        <span className="px-3 py-1 bg-white text-emerald-900 text-xs font-bold rounded-full uppercase shadow-2xs">+1 EXP</span>
-                      </div>
-                    )}
-                    {answerStatus === "WRONG" && (
-                      <div className="w-full p-4.5 bg-rose-600 text-white rounded-2xl shadow-xs border border-rose-500 flex items-center gap-3.5">
-                        <div>
-                          <h3 className="text-lg sm:text-xl font-bold">ยังไม่ถูกต้อง</h3>
-                          {typedInput && (
-                            <p className="text-xs sm:text-sm text-rose-100 font-medium mt-0.5">
-                              คุณตอบ: &ldquo;{typedInput}&rdquo; • เฉลย: &ldquo;{vocab.word}&rdquo;
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Revealed Answer Content */}
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80">
+                </div>
+              ) : (
+                <div
+                  className={`pointer-events-auto w-full p-6 rounded-3xl border shadow-xl flex flex-col gap-4 max-h-[75vh] overflow-y-auto transition-all duration-300 ${
+                    answerStatus === "CORRECT"
+                      ? "bg-emerald-50/90 backdrop-blur-xl border-emerald-400"
+                      : "bg-white/95 backdrop-blur-xl border-slate-200"
+                  }`}
+                >
+                  {answerStatus === "CORRECT" && (
+                    <div className="w-full p-4 bg-emerald-600 text-white rounded-2xl shadow-xs border border-emerald-500 flex items-center justify-between">
+                      <h3 className="text-base sm:text-lg font-bold">ถูกต้อง</h3>
+                      <span className="px-3 py-1 bg-white text-emerald-900 text-xs font-bold rounded-full uppercase">+1 EXP</span>
+                    </div>
+                  )}
+                  {answerStatus === "WRONG" && (
+                    <div className="w-full p-4 bg-rose-600 text-white rounded-2xl shadow-xs border border-rose-500 flex items-center gap-3">
                       <div>
-                        <span className="text-xs font-bold uppercase text-indigo-600 tracking-wider">
-                          เฉลยคำแปลและความหมาย
-                        </span>
-                        <div className="flex items-baseline gap-3 mt-1">
-                          <h2 className="text-3xl sm:text-4xl font-black text-slate-900">{displayWord}</h2>
-                          {displayPhonetic && (
-                            <span className="text-lg font-mono text-slate-500">/{displayPhonetic}/</span>
-                          )}
-                        </div>
-                      </div>
-                      <TTSButton text={displayWord} lang="en-US" size="md" label="ฟังเสียงคำศัพท์" />
-                    </div>
-
-                    <div className="flex flex-col gap-1 text-left">
-                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">
-                        คำแปลภาษาไทย / ความหมายพ้อง
-                      </span>
-                      <p className="text-lg sm:text-xl font-bold text-slate-800">{vocab.meaning}</p>
-                      {displaySynonyms && displaySynonyms.length > 0 && (
-                        <p className="text-xs sm:text-sm text-indigo-600 font-medium mt-1">
-                          คำพ้องความหมาย: {displaySynonyms.join(", ")}
-                        </p>
-                      )}
-                    </div>
-
-                    {vocab.exampleSentence && (
-                      <blockquote className="p-4 bg-white/80 rounded-2xl border-l-4 border-indigo-600 flex flex-col gap-1.5 text-left shadow-2xs">
-                        <p className="text-sm sm:text-base font-medium text-slate-900 italic">
-                          &ldquo;{renderFormattedSentence(vocab.exampleSentence)}&rdquo;
-                        </p>
-                        {vocab.exampleTarget && (
-                          <p className="text-xs font-semibold text-slate-700 pt-1 border-t border-slate-200/60">
-                            คำแปล: {vocab.exampleTarget}
+                        <h3 className="text-base sm:text-lg font-bold">ยังไม่ถูกต้อง</h3>
+                        {typedInput && (
+                          <p className="text-xs text-rose-100 font-medium mt-0.5">
+                            คุณตอบ: &ldquo;{typedInput}&rdquo; • เฉลย: &ldquo;{vocab.word}&rdquo;
                           </p>
                         )}
-                      </blockquote>
-                    )}
+                      </div>
+                    </div>
+                  )}
 
-                    <div className="flex flex-col gap-3 pt-2 border-t border-slate-200/80">
-                      {mode === "AUTHENTICATED" ? (
-                        <>
-                          <span className="text-xs font-bold text-center text-slate-500">
-                            เลือกระดับความจำเพื่อกำหนดรอบทบทวนถัดไป:
-                          </span>
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                            <button
-                              onClick={() => handleSrsReview("again")}
-                              disabled={isReviewing}
-                              className="cursor-pointer py-3 px-2 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-900 font-bold border border-rose-200 text-xs sm:text-sm transition-all"
-                            >
-                              จำไม่ได้
-                            </button>
-                            <button
-                              onClick={() => handleSrsReview("hard")}
-                              disabled={isReviewing}
-                              className="cursor-pointer py-3 px-2 rounded-2xl bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold border border-amber-200 text-xs sm:text-sm transition-all"
-                            >
-                              จำยาก
-                            </button>
-                            <button
-                              onClick={() => handleSrsReview("good")}
-                              disabled={isReviewing}
-                              className="cursor-pointer py-3 px-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-900 font-bold border border-blue-200 text-xs sm:text-sm transition-all"
-                            >
-                              จำได้ดี
-                            </button>
-                            <button
-                              onClick={() => handleSrsReview("easy")}
-                              disabled={isReviewing}
-                              className="cursor-pointer py-3 px-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold border border-emerald-200 text-xs sm:text-sm transition-all"
-                            >
-                              ง่ายมาก
-                            </button>
-                          </div>
-                        </>
-                      ) : (
+                  <div className="flex items-center justify-between p-4 bg-white/80 border border-slate-200/80 rounded-2xl shadow-2xs">
+                    <div className="flex items-baseline gap-3">
+                      <span className="text-3xl sm:text-4xl font-black text-slate-900">{displayWord}</span>
+                      {displayPhonetic && (
+                        <span className="text-base sm:text-lg font-mono text-slate-500">/{displayPhonetic}/</span>
+                      )}
+                    </div>
+                    <TTSButton text={displayWord} lang="en-US" size="md" label="ฟังเสียงคำศัพท์" />
+                  </div>
+
+                  <div className="flex flex-col gap-1 text-left">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">
+                      คำแปลภาษาไทย / ความหมายพ้อง
+                    </span>
+                    <p className="text-lg sm:text-xl font-bold text-slate-800">{vocab.meaning}</p>
+                    {displaySynonyms && displaySynonyms.length > 0 && (
+                      <p className="text-xs sm:text-sm text-indigo-600 font-medium mt-1">
+                        คำพ้องความหมาย: {displaySynonyms.join(", ")}
+                      </p>
+                    )}
+                  </div>
+
+                  {vocab.exampleSentence && (
+                    <blockquote className="p-4 bg-white/80 rounded-2xl border-l-4 border-indigo-600 flex flex-col gap-1.5 text-left shadow-2xs">
+                      <p className="text-sm sm:text-base font-medium text-slate-900 italic">
+                        &ldquo;{renderFormattedSentence(vocab.exampleSentence)}&rdquo;
+                      </p>
+                      {vocab.exampleTarget && (
+                        <p className="text-xs font-semibold text-slate-700 pt-1 border-t border-slate-200/60">
+                          คำแปล: {vocab.exampleTarget}
+                        </p>
+                      )}
+                    </blockquote>
+                  )}
+
+                  <div className="flex flex-col gap-3 pt-2 border-t border-slate-200/80">
+                    {mode === "AUTHENTICATED" ? (
+                      <>
+                        <span className="text-xs font-bold text-center text-slate-500">
+                          เลือกระดับความจำเพื่อกำหนดรอบทบทวนถัดไป:
+                        </span>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                          <button
+                            onClick={() => handleSrsReview("again")}
+                            disabled={isReviewing}
+                            className="cursor-pointer py-3 px-2 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-900 font-bold border border-rose-200 text-xs sm:text-sm transition-all"
+                          >
+                            จำไม่ได้
+                          </button>
+                          <button
+                            onClick={() => handleSrsReview("hard")}
+                            disabled={isReviewing}
+                            className="cursor-pointer py-3 px-2 rounded-2xl bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold border border-amber-200 text-xs sm:text-sm transition-all"
+                          >
+                            จำยาก
+                          </button>
+                          <button
+                            onClick={() => handleSrsReview("good")}
+                            disabled={isReviewing}
+                            className="cursor-pointer py-3 px-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-900 font-bold border border-blue-200 text-xs sm:text-sm transition-all"
+                          >
+                            จำได้ดี
+                          </button>
+                          <button
+                            onClick={() => handleSrsReview("easy")}
+                            disabled={isReviewing}
+                            className="cursor-pointer py-3 px-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold border border-emerald-200 text-xs sm:text-sm transition-all"
+                          >
+                            ง่ายมาก
+                          </button>
+                        </div>
+                      </>
+                    ) : (
                         <div className="flex items-center gap-3 w-full">
                           <button
                             type="button"
@@ -1372,7 +1232,6 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                 )}
               </div>
             </div>
-          )}
         </>
       ) : null}
     </div>
