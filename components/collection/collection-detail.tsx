@@ -100,7 +100,10 @@ export default function CollectionDetail({
 
     setCompletedIds([]);
     if (typeof window !== "undefined") {
-      window.location.href = `/practice?collectionId=${collection.id}`;
+      try {
+        localStorage.removeItem(`vocab_practice_state_${collection.id}`);
+      } catch (e) {}
+      window.location.href = `/practice?collectionId=${collection.id}&reset=true`;
     }
   };
 
@@ -200,7 +203,10 @@ export default function CollectionDetail({
             {completedCount === 0 ? (
               <>
                 <Link
-                  href={`/practice?collectionId=${collection.id}`}
+                  href={`/practice?collectionId=${collection.id}&reset=true`}
+                  onClick={() => {
+                    try { localStorage.removeItem(`vocab_practice_state_${collection.id}`); } catch (e) {}
+                  }}
                   className="cursor-pointer w-full sm:w-auto px-7 py-3.5 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-bold text-sm rounded-xl shadow-sm hover:shadow transition-all flex items-center justify-center gap-2.5"
                 >
                   <PenTool className="w-4 h-4" />

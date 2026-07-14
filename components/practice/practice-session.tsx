@@ -489,6 +489,30 @@ export default function PracticeSession({
       if (savedStr) {
         const saved = JSON.parse(savedStr);
         if (saved && Array.isArray(saved.history) && saved.history.length > 0 && typeof saved.historyIndex === "number" && saved.history[saved.historyIndex]) {
+          const firstVocab = saved.history[0]?.vocab || saved.history[saved.historyIndex]?.vocab;
+          const totalWordsTarget = firstVocab?.meta?.progress?.totalWords || 999;
+          const isFinishedSession = (typeof saved.maxPlayedWordsCount === "number" && saved.maxPlayedWordsCount >= totalWordsTarget) || (saved.history.length >= totalWordsTarget) || (saved.historyIndex >= totalWordsTarget - 1);
+
+          let guestProgressCleared = false;
+          if (selectedCollectionId) {
+            try {
+              const guestRaw = localStorage.getItem("vocab_progress_guest");
+              if (guestRaw) {
+                const guestMap = JSON.parse(guestRaw);
+                const colData = guestMap[selectedCollectionId];
+                if (colData && Array.isArray(colData.completedWordIds) && colData.completedWordIds.length === 0) {
+                  guestProgressCleared = true;
+                }
+              }
+            } catch (e) {}
+          }
+
+          if (isFinishedSession || guestProgressCleared) {
+            try { localStorage.removeItem(storageKey); } catch (e) {}
+            fetchNextVocab(true);
+            return;
+          }
+
           setHistory(saved.history);
           setHistoryIndex(saved.historyIndex);
           setVocab(saved.history[saved.historyIndex].vocab);
