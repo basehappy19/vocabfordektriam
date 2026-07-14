@@ -7,17 +7,17 @@ import { signIn } from "next-auth/react";
 import { UserPlus, User, Lock, Loader2, AlertCircle, ArrowLeft, GraduationCap } from "lucide-react";
 
 const GENERATION_OPTIONS = [
-  { value: "DEK69", label: "DEK 69 (สอบ TCAS 69)" },
-  { value: "DEK70", label: "DEK 70 (สอบ TCAS 70)" },
-  { value: "DEK71", label: "DEK 71 (สอบ TCAS 71)" },
-  { value: "DEK72", label: "DEK 72 (สอบ TCAS 72)" },
-  { value: "เด็กซิ่ว", label: "เด็กซิ่ว (TCAS ปีก่อน ๆ)" },
+  { value: "DEK70", label: "DEK 70" },
+  { value: "DEK71", label: "DEK 71" },
+  { value: "DEK72", label: "DEK 72" },
+  { value: "DEK73", label: "DEK 73" },
+  { value: "เด็กซิ่ว", label: "เด็กซิ่ว" },
 ];
 
 export default function RegisterPage() {
   const router = useRouter();
   const [username, setUsername] = useState("");
-  const [generation, setGeneration] = useState("DEK69");
+  const [generation, setGeneration] = useState("DEK70");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -116,7 +116,7 @@ export default function RegisterPage() {
 
           <div className="flex flex-col gap-2.5">
             <label className="text-xs sm:text-sm font-bold text-slate-700 tracking-wide">
-              เด็กรุ่นไหน (รุ่นที่เตรียมสอบ TCAS)
+              เด็กรุ่นไหน
             </label>
             <div className="relative">
               <select

@@ -7,11 +7,11 @@ import { signOut } from "next-auth/react";
 import { User, Mail, Lock, ArrowLeft, Loader2, CheckCircle2, AlertCircle, ShieldCheck, Calendar, GraduationCap, Trash2 } from "lucide-react";
 
 const GENERATION_OPTIONS = [
-  { value: "DEK69", label: "DEK 69 (สอบ TCAS 69)" },
-  { value: "DEK70", label: "DEK 70 (สอบ TCAS 70)" },
-  { value: "DEK71", label: "DEK 71 (สอบ TCAS 71)" },
-  { value: "DEK72", label: "DEK 72 (สอบ TCAS 72)" },
-  { value: "เด็กซิ่ว", label: "เด็กซิ่ว (TCAS ปีก่อน ๆ)" },
+  { value: "DEK70", label: "DEK 70" },
+  { value: "DEK71", label: "DEK 71" },
+  { value: "DEK72", label: "DEK 72" },
+  { value: "DEK73", label: "DEK 73" },
+  { value: "เด็กซิ่ว", label: "เด็กซิ่ว" },
 ];
 
 interface UserProfile {
@@ -29,7 +29,7 @@ export default function ProfilePage() {
 
   // Email & Generation form state
   const [email, setEmail] = useState("");
-  const [generation, setGeneration] = useState("DEK69");
+  const [generation, setGeneration] = useState("DEK70");
   const [savingInfo, setSavingInfo] = useState(false);
   const [infoMsg, setInfoMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -42,6 +42,7 @@ export default function ProfilePage() {
 
   // Delete account state
   const [deleting, setDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -55,7 +56,7 @@ export default function ProfilePage() {
         const data = await res.json();
         setUser(data.user);
         setEmail(data.user.email || "");
-        setGeneration(data.user.generation || "DEK69");
+        setGeneration(data.user.generation || "DEK70");
       } else {
         router.push("/login");
       }
@@ -94,9 +95,6 @@ export default function ProfilePage() {
   };
 
   const handleDeleteAccount = async () => {
-    if (!confirm("ยืนยันการลบบัญชีผู้ใช้ถาวร?\n\nคำเตือน: ข้อมูลสถิติ ความคืบหน้า และประวัติการฝึกฝนทั้งหมดของคุณจะสูญหายทันที และไม่สามารถกู้คืนกลับมาได้อีก")) {
-      return;
-    }
     setDeleting(true);
     try {
       const res = await fetch("/api/profile", { method: "DELETE" });
@@ -106,10 +104,12 @@ export default function ProfilePage() {
         const data = await res.json();
         alert(data.error || "ไม่สามารถลบบัญชีผู้ใช้ได้");
         setDeleting(false);
+        setShowDeleteModal(false);
       }
     } catch (err) {
       alert("เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง");
       setDeleting(false);
+      setShowDeleteModal(false);
     }
   };
 
@@ -280,7 +280,7 @@ export default function ProfilePage() {
             {/* Generation Field - EDITABLE */}
             <div className="flex flex-col gap-2.5">
               <label className="text-xs sm:text-sm font-bold text-slate-700 tracking-wide">
-                เด็กรุ่นไหน (รุ่นที่เตรียมสอบ TCAS)
+                เด็กรุ่นไหน
               </label>
               <div className="relative">
                 <select
@@ -321,7 +321,7 @@ export default function ProfilePage() {
             <div className="flex justify-end pt-2">
               <button
                 type="submit"
-                disabled={savingInfo || (email.trim() === (user.email || "") && generation === (user.generation || "DEK69"))}
+                disabled={savingInfo || (email.trim() === (user.email || "") && generation === (user.generation || "DEK70"))}
                 className="w-full sm:w-auto px-6 py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-extrabold text-sm sm:text-base rounded-2xl shadow-lg shadow-indigo-600/20 transition-all flex items-center justify-center gap-2 active:scale-98 cursor-pointer"
               >
                 {savingInfo ? (
@@ -472,24 +472,69 @@ export default function ProfilePage() {
             </div>
             <button
               type="button"
-              onClick={handleDeleteAccount}
+              onClick={() => setShowDeleteModal(true)}
               disabled={deleting}
               className="cursor-pointer px-6 py-3.5 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-extrabold text-xs sm:text-sm rounded-2xl shadow-md shadow-rose-600/20 transition-all flex items-center justify-center gap-2 active:scale-95 shrink-0"
             >
-              {deleting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>กำลังลบบัญชี...</span>
-                </>
-              ) : (
-                <>
-                  <Trash2 className="w-4 h-4" />
-                  <span>ลบบัญชีผู้ใช้ถาวร</span>
-                </>
-              )}
+              <Trash2 className="w-4 h-4" />
+              <span>ลบบัญชีผู้ใช้ถาวร</span>
             </button>
           </div>
         </div>
+
+        {/* Custom Delete Account Confirmation Modal */}
+        {showDeleteModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+            <div className="w-full max-w-md bg-white rounded-3xl p-6 sm:p-8 border border-slate-100 shadow-2xl flex flex-col gap-6 animate-scale-up">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 shrink-0">
+                  <AlertCircle className="w-6 h-6 stroke-[2.2]" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-900">
+                    ยืนยันการลบบัญชีผู้ใช้ถาวร?
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium mt-0.5">
+                    คำเตือนจากระบบ VocabForDekTriam
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-rose-50/70 border border-rose-100 text-rose-800 text-xs sm:text-sm font-semibold leading-relaxed">
+                ข้อมูลสถิติ ประวัติการท่องศัพท์ ความคืบหน้า (SRS) และบัญชีผู้ใช้นี้จะสูญหายทันทีและไม่สามารถกู้คืนกลับมาได้อีก คุณแน่ใจหรือไม่ที่จะดำเนินการต่อ?
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  disabled={deleting}
+                  onClick={() => setShowDeleteModal(false)}
+                  className="cursor-pointer w-full sm:w-auto px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs sm:text-sm rounded-2xl transition-all active:scale-95"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="button"
+                  disabled={deleting}
+                  onClick={handleDeleteAccount}
+                  className="cursor-pointer w-full sm:w-auto px-6 py-3 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-extrabold text-xs sm:text-sm rounded-2xl shadow-md shadow-rose-600/20 transition-all flex items-center justify-center gap-2 active:scale-95"
+                >
+                  {deleting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>กำลังลบบัญชี...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4" />
+                      <span>ยืนยันลบบัญชีถาวร</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

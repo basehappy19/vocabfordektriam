@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     }
 
     const cleanEmail = email && typeof email === "string" && email.trim() ? email.trim() : null;
-    const cleanGeneration = generation && typeof generation === "string" ? generation.trim() : "DEK69";
+    const cleanGeneration = generation && typeof generation === "string" ? generation.trim() : "DEK70";
 
     const existingUser = await prisma.user.findFirst({
       where: {

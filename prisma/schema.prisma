@@ -53,7 +53,7 @@ model User {
   emailVerified DateTime? @map("email_verified")
   image         String?
   role          UserRole  @default(STUDENT)
-  generation    String?   @default("DEK69") @map("generation") @db.VarChar(50)
+  generation    String?   @default("DEK70") @map("generation") @db.VarChar(50)
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
