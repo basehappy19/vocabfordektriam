@@ -88,8 +88,8 @@ export default function RegisterPage() {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">
-              ชื่อผู้ใช้ (USERNAME)
+            <label className="text-xs font-bold text-slate-700 tracking-wide">
+              ชื่อผู้ใช้
             </label>
             <div className="relative">
               <input
@@ -106,8 +106,8 @@ export default function RegisterPage() {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">
-              ตั้งรหัสผ่าน (PASSWORD อย่างน้อย 6 ตัวอักษร)
+            <label className="text-xs font-bold text-slate-700 tracking-wide">
+              ตั้งรหัสผ่านใหม่อย่างน้อย 6 ตัวอักษร
             </label>
             <div className="relative">
               <input
@@ -124,8 +124,8 @@ export default function RegisterPage() {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">
-              ยืนยันรหัสผ่าน (CONFIRM PASSWORD)
+            <label className="text-xs font-bold text-slate-700 tracking-wide">
+              ยืนยันรหัสผ่าน
             </label>
             <div className="relative">
               <input
@@ -167,7 +167,7 @@ export default function RegisterPage() {
         <div className="text-center">
           <Link href="/" className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600 font-bold transition-colors">
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>กลับไปหน้าหลัก (Guest Mode)</span>
+            <span>กลับไปหน้าหลัก Guest Mode</span>
           </Link>
         </div>
       </div>

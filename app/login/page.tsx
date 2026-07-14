@@ -165,8 +165,8 @@ export default function LoginPage() {
         {mode === "CHECK" && (
           <form onSubmit={handleCheckUsername} className="flex flex-col gap-4 animate-fade-in">
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">
-                ชื่อผู้ใช้ (USERNAME)
+              <label className="text-xs font-bold text-slate-700 tracking-wide">
+                ชื่อผู้ใช้
               </label>
               <div className="relative">
                 <input
@@ -226,8 +226,8 @@ export default function LoginPage() {
 
             {/* Password Field - Animated Entrance */}
             <div className="flex flex-col gap-1.5 animate-fade-in">
-              <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">
-                รหัสผ่าน (PASSWORD)
+              <label className="text-xs font-bold text-slate-700 tracking-wide">
+                รหัสผ่าน
               </label>
               <div className="relative">
                 <input
@@ -287,8 +287,8 @@ export default function LoginPage() {
             {/* Password Fields - Animated Entrance */}
             <div className="flex flex-col gap-3 animate-fade-in">
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">
-                  ตั้งรหัสผ่าน (PASSWORD อย่างน้อย 6 ตัวอักษร)
+                <label className="text-xs font-bold text-slate-700 tracking-wide">
+                  ตั้งรหัสผ่านใหม่อย่างน้อย 6 ตัวอักษร
                 </label>
                 <div className="relative">
                   <input
@@ -306,8 +306,8 @@ export default function LoginPage() {
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">
-                  ยืนยันรหัสผ่าน (CONFIRM PASSWORD)
+                <label className="text-xs font-bold text-slate-700 tracking-wide">
+                  ยืนยันรหัสผ่าน
                 </label>
                 <div className="relative">
                   <input
@@ -344,7 +344,7 @@ export default function LoginPage() {
         <div className="pt-4 border-t border-slate-100 text-center">
           <Link href="/" className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600 font-bold transition-colors">
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>กลับไปหน้าหลัก (Guest Mode)</span>
+            <span>กลับไปหน้าหลัก Guest Mode</span>
           </Link>
         </div>
       </div>

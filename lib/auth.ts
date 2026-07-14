@@ -20,9 +20,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     CredentialsProvider({
       name: "Credentials",
       credentials: {
-        username: { label: "ชื่อผู้ใช้ (Username)", type: "text" },
-        email: { label: "อีเมล (Email)", type: "email", placeholder: "student@dektriam.com" },
-        password: { label: "รหัสผ่าน (Password)", type: "password" },
+        username: { label: "ชื่อผู้ใช้", type: "text" },
+        email: { label: "อีเมล", type: "email", placeholder: "student@dektriam.com" },
+        password: { label: "รหัสผ่าน", type: "password" },
       },
       async authorize(credentials) {
         const creds = credentials as Record<string, string | undefined> | undefined;
