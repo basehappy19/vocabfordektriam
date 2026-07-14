@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { UserPlus, User, Lock, Loader2, AlertCircle, ArrowLeft, GraduationCap } from "lucide-react";
+import { clearAllGuestAndLocalData } from "@/lib/progress";
 
 const GENERATION_OPTIONS = [
   { value: "DEK70", label: "DEK 70" },
@@ -62,6 +63,7 @@ export default function RegisterPage() {
         if (loginRes?.error) {
           router.push("/login");
         } else {
+          clearAllGuestAndLocalData();
           router.push("/");
           router.refresh();
         }

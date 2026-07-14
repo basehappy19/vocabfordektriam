@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { User, Lock, ArrowRight, Loader2, AlertCircle, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { clearAllGuestAndLocalData } from "@/lib/progress";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -71,6 +72,7 @@ export default function LoginPage() {
       if (res?.error) {
         setError("รหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง");
       } else {
+        clearAllGuestAndLocalData();
         router.push("/");
         router.refresh();
       }
@@ -123,6 +125,7 @@ export default function LoginPage() {
           setError("สร้างบัญชีสำเร็จ แต่ไม่สามารถเข้าสู่ระบบอัตโนมัติได้ กรุณาลองเข้าสู่ระบบใหม่");
           setMode("LOGIN");
         } else {
+          clearAllGuestAndLocalData();
           router.push("/");
           router.refresh();
         }

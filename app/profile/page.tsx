@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { User, Mail, Lock, ArrowLeft, Loader2, CheckCircle2, AlertCircle, ShieldCheck, Calendar, GraduationCap, Trash2 } from "lucide-react";
+import { clearAllGuestAndLocalData } from "@/lib/progress";
 
 const GENERATION_OPTIONS = [
   { value: "DEK70", label: "DEK 70" },
@@ -99,6 +100,7 @@ export default function ProfilePage() {
     try {
       const res = await fetch("/api/profile", { method: "DELETE" });
       if (res.ok) {
+        clearAllGuestAndLocalData();
         await signOut({ callbackUrl: "/" });
       } else {
         const data = await res.json();

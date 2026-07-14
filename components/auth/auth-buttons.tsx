@@ -1,11 +1,18 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { User, LogOut, LogIn } from "lucide-react";
+import { clearAllGuestAndLocalData } from "@/lib/progress";
 
 export function AuthNavButtons({ user }: { user?: { name?: string | null; email?: string | null } | null }) {
+  useEffect(() => {
+    if (user) {
+      clearAllGuestAndLocalData();
+    }
+  }, [user]);
+
   if (user) {
     return (
       <div className="flex items-center gap-2">
@@ -18,7 +25,10 @@ export function AuthNavButtons({ user }: { user?: { name?: string | null; email?
           <span>{user.name || "บัญชีผู้ใช้"}</span>
         </Link>
         <button
-          onClick={() => signOut({ callbackUrl: "/" })}
+          onClick={() => {
+            clearAllGuestAndLocalData();
+            signOut({ callbackUrl: "/" });
+          }}
           className="cursor-pointer px-3 py-1.5 bg-white hover:bg-rose-50 hover:text-rose-600 text-slate-600 border border-slate-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
           title="ออกจากระบบ"
         >

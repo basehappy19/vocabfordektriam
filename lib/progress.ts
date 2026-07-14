@@ -22,6 +22,35 @@ export function getGuestProgressMap(): GuestProgressMap {
   }
 }
 
+export function clearAllGuestAndLocalData() {
+  if (typeof window === "undefined") return;
+  try {
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (
+        key &&
+        (key.startsWith("vocab_") ||
+          key.includes("progress") ||
+          key.includes("session") ||
+          key.includes("history") ||
+          key.includes("practice") ||
+          key.includes("guest"))
+      ) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach((key) => localStorage.removeItem(key));
+
+    // Explicitly remove primary keys just in case
+    localStorage.removeItem("vocab_progress_guest");
+    localStorage.removeItem("vocab_sessions_history_guest");
+    localStorage.removeItem("vocab_play_counts_guest");
+  } catch (e) {
+    console.error("Failed to clear guest and local data from localStorage:", e);
+  }
+}
+
 export function recordGuestWordCompletion(wordId: string, collectionId?: string | null, category?: string | null) {
   if (typeof window === "undefined" || !wordId) return;
   try {
