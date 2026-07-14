@@ -65,30 +65,30 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center bg-[#f8fafc] px-4 py-12 font-sans text-slate-900">
-      <div className="w-full max-w-md bg-white p-8 sm:p-10 rounded-3xl border border-slate-200/80 shadow-xl flex flex-col gap-6">
-        <div className="text-center flex flex-col items-center gap-2">
-          <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
-            <UserPlus className="w-6 h-6 stroke-[2.2]" />
+    <div className="min-h-screen flex flex-col justify-center items-center bg-[#f8fafc] px-4 py-16 font-sans text-slate-900">
+      <div className="w-full max-w-md bg-white p-8 sm:p-12 rounded-3xl border border-slate-200/80 shadow-xl flex flex-col gap-8">
+        <div className="text-center flex flex-col items-center gap-3 mb-1">
+          <div className="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-2xs mb-1">
+            <UserPlus className="w-7 h-7 stroke-[2.2]" />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 mt-1">
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
             สมัครสมาชิกใหม่
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium">
+          <p className="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed max-w-sm">
             สร้างบัญชีด้วยชื่อผู้ใช้เพื่อบันทึกสถิติและความคืบหน้าการท่องศัพท์
           </p>
         </div>
 
         {error && (
-          <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs sm:text-sm font-bold flex items-center gap-2.5 animate-fade-in">
-            <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+          <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs sm:text-sm font-bold flex items-center gap-3 animate-fade-in">
+            <AlertCircle className="w-5 h-5 shrink-0 text-rose-600" />
             <span>{error}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-700 tracking-wide">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+          <div className="flex flex-col gap-2.5">
+            <label className="text-xs sm:text-sm font-bold text-slate-700 tracking-wide">
               ชื่อผู้ใช้
             </label>
             <div className="relative">
@@ -99,14 +99,14 @@ export default function RegisterPage() {
                 placeholder="เช่น somchai_dek68"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 pl-11 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white font-medium transition-all"
+                className="w-full bg-slate-50/80 border border-slate-200 rounded-2xl px-4 py-4 pl-12 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white font-medium transition-all"
               />
-              <User className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+              <User className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
             </div>
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-700 tracking-wide">
+          <div className="flex flex-col gap-2.5">
+            <label className="text-xs sm:text-sm font-bold text-slate-700 tracking-wide">
               ตั้งรหัสผ่านใหม่อย่างน้อย 6 ตัวอักษร
             </label>
             <div className="relative">
@@ -117,14 +117,14 @@ export default function RegisterPage() {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 pl-11 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white font-medium transition-all"
+                className="w-full bg-slate-50/80 border border-slate-200 rounded-2xl px-4 py-4 pl-12 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white font-medium transition-all"
               />
-              <Lock className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+              <Lock className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
             </div>
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-700 tracking-wide">
+          <div className="flex flex-col gap-2.5">
+            <label className="text-xs sm:text-sm font-bold text-slate-700 tracking-wide">
               ยืนยันรหัสผ่าน
             </label>
             <div className="relative">
@@ -135,20 +135,20 @@ export default function RegisterPage() {
                 placeholder="••••••••"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 pl-11 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white font-medium transition-all"
+                className="w-full bg-slate-50/80 border border-slate-200 rounded-2xl px-4 py-4 pl-12 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white font-medium transition-all"
               />
-              <Lock className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+              <Lock className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
             </div>
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="mt-2 w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-extrabold text-sm sm:text-base rounded-2xl shadow-lg shadow-indigo-600/25 transition-all flex items-center justify-center gap-2 active:scale-98 cursor-pointer"
+            className="mt-3 w-full py-4 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-extrabold text-sm sm:text-base rounded-2xl shadow-xl shadow-indigo-600/20 transition-all flex items-center justify-center gap-2.5 active:scale-98 cursor-pointer"
           >
             {loading ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-5 h-5 animate-spin" />
                 <span>กำลังสร้างบัญชี...</span>
               </>
             ) : (
@@ -164,10 +164,10 @@ export default function RegisterPage() {
           </Link>
         </div>
 
-        <div className="text-center">
-          <Link href="/" className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600 font-bold transition-colors">
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>กลับไปหน้าหลัก Guest Mode</span>
+        <div className="pt-6 mt-2 border-t border-slate-100 text-center">
+          <Link href="/" className="inline-flex items-center gap-2 text-xs sm:text-sm text-slate-400 hover:text-slate-600 font-bold transition-colors">
+            <ArrowLeft className="w-4 h-4" />
+            <span>กลับไปหน้าหลัก</span>
           </Link>
         </div>
       </div>

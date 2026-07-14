@@ -135,19 +135,19 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center bg-[#f8fafc] px-4 py-12 font-sans text-slate-900">
-      <div className="w-full max-w-md bg-white p-8 sm:p-10 rounded-3xl border border-slate-200/80 shadow-xl flex flex-col gap-6">
-        {/* Header - Minimalist & Clean without Emojis */}
-        <div className="text-center flex flex-col items-center gap-2">
-          <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
-            <User className="w-6 h-6 stroke-[2.2]" />
+    <div className="min-h-screen flex flex-col justify-center items-center bg-[#f8fafc] px-4 py-16 font-sans text-slate-900">
+      <div className="w-full max-w-md bg-white p-8 sm:p-12 rounded-3xl border border-slate-200/80 shadow-xl flex flex-col gap-8">
+        {/* Header - Minimalist, Clean, and Spacious without Emojis */}
+        <div className="text-center flex flex-col items-center gap-3 mb-1">
+          <div className="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-2xs mb-1">
+            <User className="w-7 h-7 stroke-[2.2]" />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 mt-1">
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
             {mode === "CHECK" && "เข้าสู่ระบบ / สมัครสมาชิก"}
             {mode === "LOGIN" && "ยินดีต้อนรับกลับมา"}
             {mode === "REGISTER" && "สร้างบัญชีใหม่"}
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium">
+          <p className="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed max-w-sm">
             {mode === "CHECK" && "ระบุชื่อผู้ใช้เพื่อเข้าสู่ระบบหรือเริ่มต้นสร้างบัญชีใหม่"}
             {mode === "LOGIN" && "กรุณากรอกรหัสผ่านเพื่อเข้าสู่ระบบ"}
             {mode === "REGISTER" && "ไม่พบชื่อผู้ใช้นี้ในระบบ สร้างบัญชีใหม่และเริ่มใช้งานได้ทันที"}
@@ -155,17 +155,17 @@ export default function LoginPage() {
         </div>
 
         {error && (
-          <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs sm:text-sm font-bold flex items-center gap-2.5 animate-fade-in">
-            <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+          <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs sm:text-sm font-bold flex items-center gap-3 animate-fade-in">
+            <AlertCircle className="w-5 h-5 shrink-0 text-rose-600" />
             <span>{error}</span>
           </div>
         )}
 
         {/* Step 1 Form: Username Check */}
         {mode === "CHECK" && (
-          <form onSubmit={handleCheckUsername} className="flex flex-col gap-4 animate-fade-in">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-slate-700 tracking-wide">
+          <form onSubmit={handleCheckUsername} className="flex flex-col gap-6 animate-fade-in">
+            <div className="flex flex-col gap-2.5">
+              <label className="text-xs sm:text-sm font-bold text-slate-700 tracking-wide">
                 ชื่อผู้ใช้
               </label>
               <div className="relative">
@@ -176,26 +176,26 @@ export default function LoginPage() {
                   placeholder="เช่น somchai_dek68"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 pl-11 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white font-medium transition-all"
+                  className="w-full bg-slate-50/80 border border-slate-200 rounded-2xl px-4 py-4 pl-12 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white font-medium transition-all"
                 />
-                <User className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+                <User className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
               </div>
             </div>
 
             <button
               type="submit"
               disabled={checking}
-              className="mt-2 w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-extrabold text-sm sm:text-base rounded-2xl shadow-lg shadow-indigo-600/25 transition-all flex items-center justify-center gap-2 active:scale-98 cursor-pointer"
+              className="mt-3 w-full py-4 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-extrabold text-sm sm:text-base rounded-2xl shadow-xl shadow-indigo-600/20 transition-all flex items-center justify-center gap-2.5 active:scale-98 cursor-pointer"
             >
               {checking ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-5 h-5 animate-spin" />
                   <span>กำลังตรวจสอบ...</span>
                 </>
               ) : (
                 <>
                   <span>ดำเนินการต่อ</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-5 h-5" />
                 </>
               )}
             </button>
@@ -204,12 +204,12 @@ export default function LoginPage() {
 
         {/* Step 2A Form: Login */}
         {mode === "LOGIN" && (
-          <form onSubmit={handleLogin} className="flex flex-col gap-4 animate-fade-in">
+          <form onSubmit={handleLogin} className="flex flex-col gap-6 animate-fade-in">
             {/* Readonly Username Display with Edit Button */}
-            <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-medium text-slate-700">
-              <div className="flex items-center gap-2.5 overflow-hidden">
-                <User className="w-4 h-4 text-indigo-600 shrink-0" />
-                <span className="font-bold truncate">{username}</span>
+            <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-200 text-sm font-medium text-slate-700">
+              <div className="flex items-center gap-3 overflow-hidden">
+                <User className="w-5 h-5 text-indigo-600 shrink-0" />
+                <span className="font-bold truncate text-base">{username}</span>
               </div>
               <button
                 type="button"
@@ -218,15 +218,15 @@ export default function LoginPage() {
                   setPassword("");
                   setError(null);
                 }}
-                className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors shrink-0 cursor-pointer"
+                className="text-xs sm:text-sm font-bold text-indigo-600 hover:text-indigo-800 transition-colors shrink-0 cursor-pointer"
               >
                 เปลี่ยนชื่อผู้ใช้
               </button>
             </div>
 
             {/* Password Field - Animated Entrance */}
-            <div className="flex flex-col gap-1.5 animate-fade-in">
-              <label className="text-xs font-bold text-slate-700 tracking-wide">
+            <div className="flex flex-col gap-2.5 animate-fade-in">
+              <label className="text-xs sm:text-sm font-bold text-slate-700 tracking-wide">
                 รหัสผ่าน
               </label>
               <div className="relative">
@@ -237,20 +237,20 @@ export default function LoginPage() {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 pl-11 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white font-medium transition-all"
+                  className="w-full bg-slate-50/80 border border-slate-200 rounded-2xl px-4 py-4 pl-12 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white font-medium transition-all"
                 />
-                <Lock className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+                <Lock className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
               </div>
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="mt-2 w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-extrabold text-sm sm:text-base rounded-2xl shadow-lg shadow-indigo-600/25 transition-all flex items-center justify-center gap-2 active:scale-98 cursor-pointer"
+              className="mt-3 w-full py-4 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-extrabold text-sm sm:text-base rounded-2xl shadow-xl shadow-indigo-600/20 transition-all flex items-center justify-center gap-2.5 active:scale-98 cursor-pointer"
             >
               {loading ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-5 h-5 animate-spin" />
                   <span>กำลังเข้าสู่ระบบ...</span>
                 </>
               ) : (
@@ -262,13 +262,13 @@ export default function LoginPage() {
 
         {/* Step 2B Form: Seamless Register (No Email Required) */}
         {mode === "REGISTER" && (
-          <form onSubmit={handleRegister} className="flex flex-col gap-4 animate-fade-in">
+          <form onSubmit={handleRegister} className="flex flex-col gap-6 animate-fade-in">
             {/* Readonly Username Display with Edit Button */}
-            <div className="flex items-center justify-between p-3.5 rounded-xl bg-indigo-50/70 border border-indigo-200 text-sm font-medium text-indigo-900">
-              <div className="flex items-center gap-2.5 overflow-hidden">
-                <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0" />
-                <span className="text-xs">ชื่อผู้ใช้ใหม่:</span>
-                <span className="font-bold truncate">{username}</span>
+            <div className="flex items-center justify-between p-4 rounded-2xl bg-indigo-50/70 border border-indigo-200 text-sm font-medium text-indigo-900">
+              <div className="flex items-center gap-3 overflow-hidden">
+                <CheckCircle2 className="w-5 h-5 text-indigo-600 shrink-0" />
+                <span className="text-xs sm:text-sm">ชื่อผู้ใช้ใหม่:</span>
+                <span className="font-bold truncate text-base">{username}</span>
               </div>
               <button
                 type="button"
@@ -278,16 +278,16 @@ export default function LoginPage() {
                   setConfirmPassword("");
                   setError(null);
                 }}
-                className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors shrink-0 cursor-pointer"
+                className="text-xs sm:text-sm font-bold text-indigo-600 hover:text-indigo-800 transition-colors shrink-0 cursor-pointer"
               >
                 เปลี่ยน
               </button>
             </div>
 
             {/* Password Fields - Animated Entrance */}
-            <div className="flex flex-col gap-3 animate-fade-in">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-slate-700 tracking-wide">
+            <div className="flex flex-col gap-4 animate-fade-in">
+              <div className="flex flex-col gap-2.5">
+                <label className="text-xs sm:text-sm font-bold text-slate-700 tracking-wide">
                   ตั้งรหัสผ่านใหม่อย่างน้อย 6 ตัวอักษร
                 </label>
                 <div className="relative">
@@ -299,14 +299,14 @@ export default function LoginPage() {
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 pl-11 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white font-medium transition-all"
+                    className="w-full bg-slate-50/80 border border-slate-200 rounded-2xl px-4 py-4 pl-12 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white font-medium transition-all"
                   />
-                  <Lock className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+                  <Lock className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
                 </div>
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-slate-700 tracking-wide">
+              <div className="flex flex-col gap-2.5">
+                <label className="text-xs sm:text-sm font-bold text-slate-700 tracking-wide">
                   ยืนยันรหัสผ่าน
                 </label>
                 <div className="relative">
@@ -317,9 +317,9 @@ export default function LoginPage() {
                     placeholder="••••••••"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 pl-11 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white font-medium transition-all"
+                    className="w-full bg-slate-50/80 border border-slate-200 rounded-2xl px-4 py-4 pl-12 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white font-medium transition-all"
                   />
-                  <Lock className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+                  <Lock className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
                 </div>
               </div>
             </div>
@@ -327,11 +327,11 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="mt-2 w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-extrabold text-sm sm:text-base rounded-2xl shadow-lg shadow-indigo-600/25 transition-all flex items-center justify-center gap-2 active:scale-98 cursor-pointer"
+              className="mt-3 w-full py-4 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-extrabold text-sm sm:text-base rounded-2xl shadow-xl shadow-indigo-600/20 transition-all flex items-center justify-center gap-2.5 active:scale-98 cursor-pointer"
             >
               {loading ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-5 h-5 animate-spin" />
                   <span>กำลังสร้างบัญชี...</span>
                 </>
               ) : (
@@ -341,10 +341,10 @@ export default function LoginPage() {
           </form>
         )}
 
-        <div className="pt-4 border-t border-slate-100 text-center">
-          <Link href="/" className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600 font-bold transition-colors">
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>กลับไปหน้าหลัก Guest Mode</span>
+        <div className="pt-6 mt-2 border-t border-slate-100 text-center">
+          <Link href="/" className="inline-flex items-center gap-2 text-xs sm:text-sm text-slate-400 hover:text-slate-600 font-bold transition-colors">
+            <ArrowLeft className="w-4 h-4" />
+            <span>กลับไปหน้าหลัก</span>
           </Link>
         </div>
       </div>
