@@ -20,16 +20,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     CredentialsProvider({
       name: "Credentials",
       credentials: {
+        username: { label: "ชื่อผู้ใช้ (Username)", type: "text" },
         email: { label: "อีเมล (Email)", type: "email", placeholder: "student@dektriam.com" },
         password: { label: "รหัสผ่าน (Password)", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          throw new Error("กรุณากรอกอีเมลและรหัสผ่านให้ครบถ้วน");
+        const creds = credentials as Record<string, string | undefined> | undefined;
+        const identifier = (creds?.username || creds?.email || "") as string;
+        if (!identifier || !creds?.password) {
+          throw new Error("กรุณากรอกชื่อผู้ใช้หรือรหัสผ่านให้ครบถ้วน");
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email as string },
+        const user = await prisma.user.findFirst({
+          where: {
+            OR: [
+              { name: identifier.trim() },
+              { email: identifier.trim() },
+            ],
+          },
         });
 
         if (!user || !user.password) {
@@ -37,7 +45,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
 
         const isPasswordValid = await bcrypt.compare(
-          credentials.password as string,
+          creds?.password as string,
           user.password
         );
 

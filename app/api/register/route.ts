@@ -4,29 +4,43 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(request: Request) {
   try {
-    const { name, email, password } = await request.json();
+    const { name, username, email, password } = await request.json();
+    const finalUsername = (name || username || "").trim();
 
-    if (!email || !password) {
+    if (!finalUsername && !email) {
       return NextResponse.json(
-        { error: "กรุณากรอกอีเมลและรหัสผ่านให้ครบถ้วน" },
+        { error: "กรุณาระบุชื่อผู้ใช้หรืออีเมลเพื่อสมัครสมาชิก" },
         { status: 400 }
       );
     }
 
-    if (password.length < 6) {
+    if (!password || password.length < 6) {
       return NextResponse.json(
         { error: "รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร" },
         { status: 400 }
       );
     }
 
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
+    const cleanEmail = email && typeof email === "string" && email.trim() ? email.trim() : null;
+
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          ...(finalUsername ? [{ name: finalUsername }] : []),
+          ...(cleanEmail ? [{ email: cleanEmail }] : []),
+        ],
+      },
     });
 
     if (existingUser) {
+      if (existingUser.name && existingUser.name === finalUsername) {
+        return NextResponse.json(
+          { error: "ชื่อผู้ใช้นี้ถูกใช้งานแล้ว กรุณาเลือกชื่ออื่นหรือเข้าสู่ระบบ" },
+          { status: 409 }
+        );
+      }
       return NextResponse.json(
-        { error: "อีเมลนี้ถูกสมัครสมาชิกไปแล้ว กรุณาใช้อีเมลอื่นหรือเข้าสู่ระบบ" },
+        { error: "อีเมลหรือชื่อผู้ใช้นี้ถูกใช้งานแล้ว กรุณาเข้าสู่ระบบ" },
         { status: 409 }
       );
     }
@@ -35,8 +49,8 @@ export async function POST(request: Request) {
 
     const newUser = await prisma.user.create({
       data: {
-        name: name || email.split("@")[0],
-        email,
+        name: finalUsername || (cleanEmail ? cleanEmail.split("@")[0] : `user_${Date.now()}`),
+        email: cleanEmail,
         password: hashedPassword,
       },
     });
