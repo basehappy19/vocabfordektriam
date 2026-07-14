@@ -1381,7 +1381,7 @@ export default function PracticeSession({
                     </div>
                   )}
 
-                  <div className="flex items-center justify-between p-4 bg-white/80 border border-slate-200/80 rounded-2xl shadow-2xs">
+                  <div className="flex items-center justify-between p-4 bg-white/80 border border-slate-200/80 rounded-none sm:rounded-2xl shadow-2xs">
                     <div className="flex items-baseline gap-3">
                       <span className="text-3xl sm:text-4xl font-black text-slate-900">{displayWord}</span>
                       {displayPhonetic && (

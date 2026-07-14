@@ -39,6 +39,37 @@ interface CollectionDetailProps {
   userName?: string | null;
 }
 
+const renderHighlightedSentence = (sentence: string | null | undefined, targetWord: string, synonyms: string[] = []) => {
+  if (!sentence) return null;
+  const targets = Array.from(
+    new Set([targetWord, ...synonyms].filter((w) => w && w.length >= 2))
+  );
+  if (targets.length === 0) return sentence;
+  targets.sort((a, b) => b.length - a.length);
+  const escapedTargets = targets.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const regex = new RegExp(`\\b(${escapedTargets.join("|")})[a-z]*\\b`, "gi");
+
+  const parts = sentence.split(regex);
+  return parts.map((part, idx) => {
+    if (
+      targets.some(
+        (t) => part.toLowerCase().startsWith(t.toLowerCase()) || t.toLowerCase().startsWith(part.toLowerCase())
+      ) &&
+      part.length >= 2
+    ) {
+      return (
+        <strong
+          key={idx}
+          className="font-black text-indigo-700 bg-indigo-100/90 px-1.5 py-0.5 rounded-md border border-indigo-200 underline decoration-indigo-400 decoration-2"
+        >
+          {part}
+        </strong>
+      );
+    }
+    return part;
+  });
+};
+
 export default function CollectionDetail({
   collection,
   words,
@@ -352,9 +383,15 @@ export default function CollectionDetail({
                             </p>
 
                             {ex.exampleSentence && (
-                              <div className="text-xs text-slate-600 bg-slate-50/80 p-2.5 rounded-lg border border-slate-200/60 mt-1 flex flex-col gap-0.5">
-                                <span className="italic font-normal text-slate-700">"{ex.exampleSentence}"</span>
-                                {ex.exampleTarget && <span className="text-slate-500 text-[11px]">คำแปล: {ex.exampleTarget}</span>}
+                              <div className="text-xs text-slate-600 bg-slate-50/80 p-3 rounded-lg border border-slate-200/80 mt-1.5 flex flex-col gap-1">
+                                <p className="italic font-normal text-slate-800 text-sm leading-relaxed">
+                                  &ldquo;{renderHighlightedSentence(ex.exampleSentence, w.word)}&rdquo;
+                                </p>
+                                {ex.exampleTarget && (
+                                  <span className="text-slate-600 font-semibold text-xs">
+                                    🇹🇭 คำแปล: {ex.exampleTarget}
+                                  </span>
+                                )}
                               </div>
                             )}
                           </div>
