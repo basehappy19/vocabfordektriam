@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { getCompletedWordIds } from "@/lib/progress";
+import { getCompletedWordIds, getCollectionPlayCount } from "@/lib/progress";
 import { BookOpen, Layers, ChevronRight, CheckCircle2 } from "lucide-react";
 
 interface CollectionCardProps {
@@ -28,8 +28,11 @@ export default function CollectionCard({
   dbCompletedCount = 0,
 }: CollectionCardProps) {
   const [completedCount, setCompletedCount] = useState<number>(dbCompletedCount);
+  const [playCount, setPlayCount] = useState<number>(0);
 
   useEffect(() => {
+    const pCount = getCollectionPlayCount(collection.id);
+    setPlayCount(pCount);
     if (isGuest) {
       const guestIds = getCompletedWordIds(collection.id);
       setCompletedCount(guestIds.length);
@@ -47,10 +50,17 @@ export default function CollectionCard({
   return (
     <div className="group relative flex flex-col justify-between gap-4 p-5 rounded-2xl bg-white border border-slate-200/80 hover:border-slate-300 hover:shadow-md transition-all duration-200">
       <Link href={`/collection/${collection.id}`} className="cursor-pointer flex flex-col gap-3 flex-1 focus:outline-none">
-        <div className="flex items-center justify-between gap-2">
-          <span className="px-2.5 py-1 bg-slate-900 text-white rounded-full text-xs font-bold tracking-wide shadow-2xs">
-            {collection.category}
-          </span>
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5">
+            <span className="px-2.5 py-1 bg-slate-900 text-white rounded-full text-xs font-bold tracking-wide shadow-2xs">
+              {collection.category}
+            </span>
+            {playCount > 0 && (
+              <span className="text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/70 shadow-2xs flex items-center gap-1">
+                🎮 เล่นไปแล้ว {playCount} ครั้ง
+              </span>
+            )}
+          </div>
           <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200/60 tracking-wide">
             {collection.cefrLevel}
           </span>

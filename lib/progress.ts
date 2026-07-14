@@ -58,3 +58,87 @@ export function getCompletedWordIds(key: string): string[] {
   const map = getGuestProgressMap();
   return map[key]?.completedWordIds || [];
 }
+
+export interface GuestSessionHistoryItem {
+  id: string;
+  collectionId: string | null;
+  category: string | null;
+  totalWords: number;
+  correctCount: number;
+  wrongCount: number;
+  durationSeconds: number;
+  createdAt: string;
+  answers: {
+    vocabId?: string | null;
+    word: string;
+    meaning: string;
+    userTypedInput: string;
+    correctAnswerText: string;
+    isCorrect: boolean;
+  }[];
+}
+
+const HISTORY_STORAGE_KEY = "vocab_sessions_history_guest";
+const PLAY_COUNT_STORAGE_KEY = "vocab_play_counts_guest";
+
+export function getGuestSessionHistory(collectionId?: string): GuestSessionHistoryItem[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(HISTORY_STORAGE_KEY);
+    const list: GuestSessionHistoryItem[] = raw ? JSON.parse(raw) : [];
+    if (collectionId) {
+      return list.filter((item) => item.collectionId === collectionId).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }
+    return list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  } catch (e) {
+    return [];
+  }
+}
+
+export function getCollectionPlayCount(collectionId: string): number {
+  if (typeof window === "undefined" || !collectionId) return 0;
+  try {
+    const raw = localStorage.getItem(PLAY_COUNT_STORAGE_KEY);
+    const counts: { [key: string]: number } = raw ? JSON.parse(raw) : {};
+    return counts[collectionId] || 0;
+  } catch (e) {
+    return 0;
+  }
+}
+
+export function recordCollectionPlaySession(collectionId: string | null, session: GuestSessionHistoryItem) {
+  if (typeof window === "undefined") return;
+  try {
+    // 1. Save Session History
+    const historyList = getGuestSessionHistory();
+    historyList.unshift(session);
+    // Keep last 100 sessions to avoid storage overflow
+    const trimmedList = historyList.slice(0, 100);
+    localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(trimmedList));
+
+    // 2. Increment Play Count
+    if (collectionId) {
+      const rawCount = localStorage.getItem(PLAY_COUNT_STORAGE_KEY);
+      const counts: { [key: string]: number } = rawCount ? JSON.parse(rawCount) : {};
+      counts[collectionId] = (counts[collectionId] || 0) + 1;
+      localStorage.setItem(PLAY_COUNT_STORAGE_KEY, JSON.stringify(counts));
+    }
+
+    // 3. Mark all practiced words in this round as completed inside vocab_progress_guest
+    const map = getGuestProgressMap();
+    const now = new Date().toISOString();
+    const targetKey = collectionId || session.category || "GENERAL";
+    if (!map[targetKey]) {
+      map[targetKey] = { completedWordIds: [], lastUpdated: now };
+    }
+    session.answers.forEach((ans) => {
+      if (ans.vocabId && !map[targetKey].completedWordIds.includes(ans.vocabId)) {
+        map[targetKey].completedWordIds.push(ans.vocabId);
+      }
+    });
+    map[targetKey].lastUpdated = now;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+  } catch (e) {
+    console.error("Failed to save session history and play count to localStorage:", e);
+  }
+}

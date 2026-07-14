@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import TTSButton from "@/components/tts/tts-button";
 import { getCefrBadgeProps, getCefrFromNumber } from "@/lib/cefr";
-import { recordGuestWordCompletion, getCompletedWordIds } from "@/lib/progress";
+import { recordGuestWordCompletion, getCompletedWordIds, recordCollectionPlaySession, GuestSessionHistoryItem } from "@/lib/progress";
 import { getCollectionMeta } from "@/lib/collection-meta";
 
 interface VocabData {
@@ -310,6 +310,33 @@ export default function PracticeSession({
     const list = answersToSave || recordedAnswers;
     if (list.length === 0) return;
     setShowSummaryModal(true);
+
+    if (!savedSessionSummary && !isSavingSummary) {
+      const activeColId = selectedCollectionId || vocab?.collectionId || null;
+      const activeCat = selectedCategory || vocab?.category || "GENERAL";
+      const durationSeconds = Math.round((Date.now() - sessionStartTime) / 1000);
+
+      const sessionItem: GuestSessionHistoryItem = {
+        id: `session-${Date.now()}`,
+        collectionId: activeColId,
+        category: activeCat,
+        totalWords: list.length,
+        correctCount: list.filter((a) => a.isCorrect).length,
+        wrongCount: list.filter((a) => !a.isCorrect).length,
+        durationSeconds,
+        createdAt: new Date().toISOString(),
+        answers: list.map((a) => ({
+          vocabId: a.vocabId,
+          word: a.word,
+          meaning: a.meaning,
+          userTypedInput: a.userTypedInput,
+          correctAnswerText: a.correctAnswerText,
+          isCorrect: a.isCorrect,
+        })),
+      };
+      recordCollectionPlaySession(activeColId, sessionItem);
+    }
+
     if (mode !== "AUTHENTICATED" || isSavingSummary || savedSessionSummary !== null) return;
 
     setIsSavingSummary(true);
@@ -328,7 +355,7 @@ export default function PracticeSession({
 
       if (res.ok) {
         const data = await res.json();
-        setSavedSessionSummary(data.summary);
+        setSavedSessionSummary(data.summary || data.sessionSummary || null);
       }
     } catch (err) {
       console.error("Error saving practice session summary:", err);
@@ -614,7 +641,7 @@ export default function PracticeSession({
 
   const handleSrsReview = async (rating: "again" | "hard" | "good" | "easy") => {
     if (!vocab) return;
-    recordGuestWordCompletion(vocab.id, vocab.collectionId, vocab.category);
+    recordGuestWordCompletion(vocab.id, selectedCollectionId || vocab.collectionId, vocab.category);
 
     if (mode === "GUEST") {
       incrementGuestCountSafely();
@@ -714,7 +741,7 @@ export default function PracticeSession({
       if (checkIsCorrectAnswer(textToCheck, vocab, practiceDirection)) {
         newStatus = "CORRECT";
         isCorrect = true;
-        recordGuestWordCompletion(vocab.id, vocab.collectionId, vocab.category);
+        recordGuestWordCompletion(vocab.id, selectedCollectionId || vocab.collectionId, vocab.category);
         incrementGuestCountSafely();
       } else {
         newStatus = "WRONG";
@@ -1093,7 +1120,7 @@ export default function PracticeSession({
                       setTypedInput(val);
                       if (vocab && checkIsCorrectAnswer(val, vocab, practiceDirection)) {
                         setAnswerStatus("CORRECT");
-                        recordGuestWordCompletion(vocab.id, vocab.collectionId, vocab.category);
+                        recordGuestWordCompletion(vocab.id, selectedCollectionId || vocab.collectionId, vocab.category);
                         incrementGuestCountSafely();
                         setShowAnswer(true);
                         syncCurrentToHistory({ typedInput: val, answerStatus: "CORRECT", showAnswer: true });
@@ -1118,7 +1145,7 @@ export default function PracticeSession({
                         e.preventDefault();
                         if (vocab && checkIsCorrectAnswer(typedInput, vocab, practiceDirection)) {
                           setAnswerStatus("CORRECT");
-                          recordGuestWordCompletion(vocab.id, vocab.collectionId, vocab.category);
+                          recordGuestWordCompletion(vocab.id, selectedCollectionId || vocab.collectionId, vocab.category);
                           incrementGuestCountSafely();
                           setShowAnswer(true);
                           syncCurrentToHistory({ typedInput: typedInput.trim(), answerStatus: "CORRECT", showAnswer: true });
@@ -1177,7 +1204,7 @@ export default function PracticeSession({
                         if (!typedInput.trim()) return;
                         if (vocab && checkIsCorrectAnswer(typedInput, vocab, practiceDirection)) {
                           setAnswerStatus("CORRECT");
-                          recordGuestWordCompletion(vocab.id, vocab.collectionId, vocab.category);
+                          recordGuestWordCompletion(vocab.id, selectedCollectionId || vocab.collectionId, vocab.category);
                           incrementGuestCountSafely();
                           setShowAnswer(true);
                           syncCurrentToHistory({ typedInput: typedInput.trim(), answerStatus: "CORRECT", showAnswer: true });

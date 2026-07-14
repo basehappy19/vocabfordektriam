@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { getCefrBadgeProps } from "@/lib/cefr";
-import { getCompletedWordIds } from "@/lib/progress";
-import { ArrowLeft, CheckCircle2, Search, X, BookOpen, PenTool, History, Play, RotateCcw } from "lucide-react";
+import { getCompletedWordIds, getCollectionPlayCount, getGuestSessionHistory, GuestSessionHistoryItem } from "@/lib/progress";
+import { ArrowLeft, CheckCircle2, Search, X, BookOpen, PenTool, History, Play, RotateCcw, Calendar, Clock, Award } from "lucide-react";
 import { AuthNavButtons } from "@/components/auth/auth-buttons";
 
 interface VocabItem {
@@ -46,10 +46,17 @@ export default function CollectionDetail({
   userName,
 }: CollectionDetailProps) {
   const [completedIds, setCompletedIds] = useState<string[]>(initialDbProgressIds);
+  const [playCount, setPlayCount] = useState<number>(0);
+  const [sessionHistory, setSessionHistory] = useState<GuestSessionHistoryItem[]>([]);
+  const [historyTab, setHistoryTab] = useState<"SESSIONS" | "WORDS">("SESSIONS");
   const [searchQuery, setSearchQuery] = useState("");
   const [showHistoryModal, setShowHistoryModal] = useState(false);
 
   useEffect(() => {
+    const pCount = getCollectionPlayCount(collection.id);
+    const sessions = getGuestSessionHistory(collection.id);
+    setPlayCount(pCount);
+    setSessionHistory(sessions);
     if (isGuest) {
       const guestIds = getCompletedWordIds(collection.id);
       setCompletedIds(guestIds);
@@ -145,13 +152,18 @@ export default function CollectionDetail({
               <BookOpen className="w-7 h-7 text-indigo-600" />
             </div>
             <div className="flex flex-col gap-2 flex-1">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="px-3.5 py-1 bg-slate-900 text-white rounded-full text-xs font-bold tracking-wide shadow-2xs">
                   {collection.category}
                 </span>
                 <span className={`px-3 py-1 rounded-full text-xs font-bold border ${cefrInfo.colorClass}`}>
                   {cefrInfo.cefr}
                 </span>
+                {playCount > 0 && (
+                  <span className="px-3 py-1 bg-amber-50 text-amber-800 rounded-full text-xs font-bold border border-amber-200/80 shadow-2xs flex items-center gap-1.5">
+                    <span>🎮 เล่นไปแล้ว {playCount} ครั้ง</span>
+                  </span>
+                )}
               </div>
               <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">
                 {cleanTitle}
@@ -184,13 +196,28 @@ export default function CollectionDetail({
           {/* Practice Action Buttons */}
           <div className="flex flex-wrap items-center gap-3 pt-1">
             {completedCount === 0 ? (
-              <Link
-                href={`/practice?collectionId=${collection.id}`}
-                className="cursor-pointer w-full sm:w-auto px-7 py-3.5 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-bold text-sm rounded-xl shadow-sm hover:shadow transition-all flex items-center justify-center gap-2.5"
-              >
-                <PenTool className="w-4 h-4" />
-                <span>เริ่มฝึกเขียนคำศัพท์ชุดนี้</span>
-              </Link>
+              <>
+                <Link
+                  href={`/practice?collectionId=${collection.id}`}
+                  className="cursor-pointer w-full sm:w-auto px-7 py-3.5 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-bold text-sm rounded-xl shadow-sm hover:shadow transition-all flex items-center justify-center gap-2.5"
+                >
+                  <PenTool className="w-4 h-4" />
+                  <span>เริ่มฝึกเขียนคำศัพท์ชุดนี้</span>
+                </Link>
+                {(playCount > 0 || sessionHistory.length > 0) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHistoryTab("SESSIONS");
+                      setShowHistoryModal(true);
+                    }}
+                    className="cursor-pointer w-full sm:w-auto px-6 py-3.5 bg-white hover:bg-slate-50 active:scale-[0.98] text-slate-700 font-bold text-sm rounded-xl border border-slate-200/80 transition-all flex items-center justify-center gap-2"
+                  >
+                    <History className="w-4 h-4 text-slate-600" />
+                    <span>ดูประวัติที่เคยเล่น ({playCount > 0 ? `${playCount} ครั้ง` : "มีประวัติ"})</span>
+                  </button>
+                )}
+              </>
             ) : completedCount < totalWords ? (
               <>
                 <Link
@@ -210,7 +237,10 @@ export default function CollectionDetail({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowHistoryModal(true)}
+                  onClick={() => {
+                    setHistoryTab("SESSIONS");
+                    setShowHistoryModal(true);
+                  }}
                   className="cursor-pointer w-full sm:w-auto px-6 py-3.5 bg-white hover:bg-slate-50 active:scale-[0.98] text-slate-700 font-bold text-sm rounded-xl border border-slate-200/80 transition-all flex items-center justify-center gap-2"
                 >
                   <History className="w-4 h-4 text-slate-600" />
@@ -221,11 +251,14 @@ export default function CollectionDetail({
               <>
                 <button
                   type="button"
-                  onClick={() => setShowHistoryModal(true)}
+                  onClick={() => {
+                    setHistoryTab("SESSIONS");
+                    setShowHistoryModal(true);
+                  }}
                   className="cursor-pointer w-full sm:w-auto px-7 py-3.5 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-bold text-sm rounded-xl shadow-sm hover:shadow transition-all flex items-center justify-center gap-2.5"
                 >
                   <History className="w-4 h-4" />
-                  <span>ดูประวัติที่เคยเล่น (ครบ 100%)</span>
+                  <span>ดูประวัติที่เคยเล่น ({playCount > 0 ? `${playCount} ครั้ง` : "ครบ 100%"})</span>
                 </button>
                 <button
                   type="button"
@@ -360,34 +393,141 @@ export default function CollectionDetail({
       {/* History Summary Modal */}
       {showHistoryModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[85vh] flex flex-col border border-slate-200 shadow-2xl overflow-hidden">
+          <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[88vh] flex flex-col border border-slate-200 shadow-2xl overflow-hidden">
             {/* Modal Header */}
-            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0">
-                  <History className="w-5 h-5 text-emerald-600" />
+            <div className="p-6 border-b border-slate-100 flex flex-col gap-4 bg-slate-50/50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0">
+                    <History className="w-5 h-5 text-emerald-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-extrabold text-slate-900">ประวัติการฝึกฝน ({cleanTitle})</h3>
+                    <p className="text-xs text-slate-500">
+                      เล่นไปแล้ว {playCount || sessionHistory.length} ครั้ง | ผ่านแล้ว {completedCount}/{totalWords} คำ ({progressPercent}%)
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-lg font-extrabold text-slate-900">ประวัติการฝึกฝน ({cleanTitle})</h3>
-                  <p className="text-xs text-slate-500">
-                    ผ่านแล้ว {completedCount} จาก {totalWords} คำ ({progressPercent}%)
-                  </p>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowHistoryModal(false)}
+                  className="cursor-pointer p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowHistoryModal(false)}
-                className="cursor-pointer p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
+
+              {/* Tabs */}
+              <div className="flex items-center gap-2 bg-slate-200/60 p-1 rounded-xl w-fit">
+                <button
+                  type="button"
+                  onClick={() => setHistoryTab("SESSIONS")}
+                  className={`cursor-pointer px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    historyTab === "SESSIONS"
+                      ? "bg-white text-indigo-700 shadow-2xs"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>รอบการฝึกซ้อม ({sessionHistory.length || playCount} รอบ)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHistoryTab("WORDS")}
+                  className={`cursor-pointer px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    historyTab === "WORDS"
+                      ? "bg-white text-emerald-700 shadow-2xs"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  <Award className="w-3.5 h-3.5" />
+                  <span>คำศัพท์ที่ผ่าน ({completedCount}/{totalWords} คำ)</span>
+                </button>
+              </div>
             </div>
 
-            {/* Modal Content - Completed Words List */}
+            {/* Modal Content */}
             <div className="p-6 overflow-y-auto flex-1 flex flex-col gap-3">
-              {completedCount === 0 ? (
+              {historyTab === "SESSIONS" ? (
+                sessionHistory.length === 0 && playCount === 0 ? (
+                  <div className="py-12 text-center text-slate-400 text-sm font-medium">
+                    ยังไม่มีบันทึกประวัติการฝึกซ้อมของชุดคำศัพท์นี้
+                  </div>
+                ) : sessionHistory.length > 0 ? (
+                  sessionHistory.map((sess, idx) => {
+                    const sessPercent = sess.totalWords > 0 ? Math.round((sess.correctCount / sess.totalWords) * 100) : 100;
+                    const formattedDate = new Date(sess.createdAt).toLocaleDateString("th-TH", {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    });
+                    return (
+                      <div
+                        key={sess.id}
+                        className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-col gap-3"
+                      >
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="px-2.5 py-1 bg-indigo-100 text-indigo-800 font-bold text-xs rounded-lg">
+                              รอบที่ {sessionHistory.length - idx}
+                            </span>
+                            <span className="text-xs text-slate-500 font-medium flex items-center gap-1">
+                              <Calendar className="w-3 h-3 text-slate-400" />
+                              {formattedDate}
+                            </span>
+                            {sess.durationSeconds > 0 && (
+                              <span className="text-xs text-slate-500 font-medium flex items-center gap-1">
+                                <Clock className="w-3 h-3 text-slate-400" />
+                                {sess.durationSeconds} วินาที
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2.5 py-1 rounded-lg">
+                              ตอบถูก {sess.correctCount}/{sess.totalWords} คำ ({sessPercent}%)
+                            </span>
+                          </div>
+                        </div>
+
+                        {sess.answers && sess.answers.length > 0 && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-slate-200/60">
+                            {sess.answers.map((ans, aIdx) => (
+                              <div
+                                key={aIdx}
+                                className={`p-2.5 rounded-xl text-xs flex items-center justify-between gap-2 border ${
+                                  ans.isCorrect
+                                    ? "bg-emerald-50/60 border-emerald-200/80 text-emerald-900"
+                                    : "bg-rose-50/60 border-rose-200/80 text-rose-900"
+                                }`}
+                              >
+                                <div className="truncate">
+                                  <span className="font-bold">{ans.word}</span>
+                                  <span className="text-slate-500 mx-1">=</span>
+                                  <span className="text-slate-600">{ans.meaning}</span>
+                                </div>
+                                <span className="shrink-0 font-bold">
+                                  {ans.isCorrect ? "✓ ผ่าน" : "✗ ผิด"}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="p-6 rounded-2xl bg-amber-50/60 border border-amber-200/80 text-center flex flex-col gap-2 items-center">
+                    <span className="text-amber-800 font-bold text-sm">🎮 มีประวัติเคยเล่นผ่านไปแล้ว {playCount} ครั้ง</span>
+                    <p className="text-xs text-amber-700 max-w-md">
+                      ระบบบันทึกจำนวนรอบการเล่นของคุณไว้เรียบร้อยแล้ว ในการฝึกซ้อมรอบถัดไป ระบบจะบันทึกรายละเอียดคำศัพท์และคะแนนแต่ละรอบให้ที่หน้านี้โดยอัตโนมัติ
+                    </p>
+                  </div>
+                )
+              ) : completedCount === 0 ? (
                 <div className="py-12 text-center text-slate-400 text-sm font-medium">
-                  ยังไม่มีประวัติการฝึกฝนผ่านในชุดคำศัพท์นี้
+                  ยังไม่มีคำศัพท์ที่ฝึกผ่านในชุดนี้
                 </div>
               ) : (
                 words
