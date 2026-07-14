@@ -15,7 +15,7 @@ export function AuthNavButtons({ user }: { user?: { name?: string | null; email?
         </span>
         <button
           onClick={() => signOut({ callbackUrl: "/" })}
-          className="px-3 py-1.5 bg-white hover:bg-rose-50 hover:text-rose-600 text-slate-600 border border-slate-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+          className="cursor-pointer px-3 py-1.5 bg-white hover:bg-rose-50 hover:text-rose-600 text-slate-600 border border-slate-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
           title="ออกจากระบบ"
         >
           <LogOut className="w-3.5 h-3.5" />
@@ -29,14 +29,14 @@ export function AuthNavButtons({ user }: { user?: { name?: string | null; email?
     <div className="flex items-center gap-2">
       <Link
         href="/login"
-        className="px-3.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center gap-1.5"
+        className="cursor-pointer px-3.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center gap-1.5"
       >
         <LogIn className="w-3.5 h-3.5 text-slate-500" />
         <span>เข้าสู่ระบบ</span>
       </Link>
       <Link
         href="/register"
-        className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
+        className="cursor-pointer px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
       >
         <UserPlus className="w-3.5 h-3.5" />
         <span>สมัครสมาชิก</span>

@@ -46,18 +46,18 @@ export default function CollectionCard({
 
   return (
     <div className="group relative flex flex-col justify-between gap-4 p-5 rounded-2xl bg-white border border-slate-200/80 hover:border-slate-300 hover:shadow-md transition-all duration-200">
-      <Link href={`/collection/${collection.id}`} className="flex flex-col gap-3 flex-1 focus:outline-none">
+      <Link href={`/collection/${collection.id}`} className="cursor-pointer flex flex-col gap-3 flex-1 focus:outline-none">
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <span className="p-2 rounded-xl bg-slate-100 text-slate-700 border border-slate-200/60 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
-              <BookOpen className="w-4 h-4" />
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-900 text-white tracking-wide">
+              {collection.category}
             </span>
             <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${collection.badgeColor}`}>
               {collection.badge}
             </span>
           </div>
-          <span className="text-[11px] font-medium text-slate-500 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200/60">
-            CEFR {collection.cefrLevel}
+          <span className="text-[11px] font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200/60">
+            {collection.cefrLevel}
           </span>
         </div>
 
@@ -96,7 +96,7 @@ export default function CollectionCard({
 
         <Link
           href={`/collection/${collection.id}`}
-          className="flex items-center justify-between pt-1 text-xs font-semibold text-slate-700 hover:text-indigo-600 transition-colors group-hover:translate-x-0.5"
+          className="cursor-pointer flex items-center justify-between pt-1 text-xs font-semibold text-slate-700 hover:text-indigo-600 transition-colors group-hover:translate-x-0.5"
         >
           <span>เข้าสู่คลังคำศัพท์</span>
           <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-indigo-600" />

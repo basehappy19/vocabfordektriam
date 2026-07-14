@@ -61,7 +61,7 @@ export function getCefrBadgeProps(cefrOrNum: string | number | undefined) {
         label: "Beginner",
         thaiLabel: "ระดับเริ่มต้น",
         colorClass: "bg-slate-100 text-slate-700 border-slate-300",
-        badgeText: "CEFR A1 • Beginner",
+        badgeText: "A1",
       };
     case "A2":
       return {
@@ -69,7 +69,7 @@ export function getCefrBadgeProps(cefrOrNum: string | number | undefined) {
         label: "Elementary",
         thaiLabel: "ระดับพื้นฐาน",
         colorClass: "bg-emerald-50 text-emerald-700 border-emerald-300",
-        badgeText: "CEFR A2 • Elementary",
+        badgeText: "A2",
       };
     case "B1":
       return {
@@ -77,7 +77,7 @@ export function getCefrBadgeProps(cefrOrNum: string | number | undefined) {
         label: "Intermediate",
         thaiLabel: "ระดับกลาง",
         colorClass: "bg-blue-50 text-blue-700 border-blue-300",
-        badgeText: "CEFR B1 • Intermediate",
+        badgeText: "B1",
       };
     case "B2":
       return {
@@ -85,7 +85,7 @@ export function getCefrBadgeProps(cefrOrNum: string | number | undefined) {
         label: "Upper Intermediate",
         thaiLabel: "ระดับข้อสอบ TGAT/TCAS",
         colorClass: "bg-indigo-50 text-indigo-700 border-indigo-300",
-        badgeText: "CEFR B2 • Upper Intermediate",
+        badgeText: "B2",
       };
     case "C1":
       return {
@@ -93,7 +93,7 @@ export function getCefrBadgeProps(cefrOrNum: string | number | undefined) {
         label: "Advanced",
         thaiLabel: "ระดับข้อสอบ A-Level/ยากพิเศษ",
         colorClass: "bg-amber-50 text-amber-800 border-amber-300",
-        badgeText: "CEFR C1 • Advanced",
+        badgeText: "C1",
       };
     case "C2":
       return {
@@ -101,7 +101,7 @@ export function getCefrBadgeProps(cefrOrNum: string | number | undefined) {
         label: "Proficient",
         thaiLabel: "ระดับเชี่ยวชาญสูงสุด",
         colorClass: "bg-rose-50 text-rose-700 border-rose-300",
-        badgeText: "CEFR C2 • Proficient",
+        badgeText: "C2",
       };
     default:
       return {
@@ -109,7 +109,7 @@ export function getCefrBadgeProps(cefrOrNum: string | number | undefined) {
         label: "Upper Intermediate",
         thaiLabel: "ระดับข้อสอบ TGAT/TCAS",
         colorClass: "bg-indigo-50 text-indigo-700 border-indigo-300",
-        badgeText: "CEFR B2 • Upper Intermediate",
+        badgeText: "B2",
       };
   }
 }
