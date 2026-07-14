@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { UserPlus, User, Lock, Loader2, AlertCircle, ArrowLeft, GraduationCap } from "lucide-react";
+import { UserPlus, User, Lock, Loader2, AlertCircle, ArrowLeft, GraduationCap, ArrowRight, CheckCircle2 } from "lucide-react";
 import { clearAllGuestAndLocalData } from "@/lib/progress";
 
 const GENERATION_OPTIONS = [
@@ -17,23 +17,53 @@ const GENERATION_OPTIONS = [
 
 export default function RegisterPage() {
   const router = useRouter();
+  const [step, setStep] = useState<1 | 2>(1);
   const [username, setUsername] = useState("");
-  const [generation, setGeneration] = useState("DEK70");
+  const [generation, setGeneration] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(false);
+
+  const handleNextStep = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!username.trim()) {
+      setError("กรุณาระบุชื่อผู้ใช้");
+      return;
+    }
+    if (!generation) {
+      setError("กรุณาเลือกรุ่นของคุณก่อนดำเนินการต่อ");
+      return;
+    }
+
+    setChecking(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/auth/check-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: username.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "ไม่สามารถตรวจสอบชื่อผู้ใช้ได้");
+      } else if (data.exists) {
+        setError("ชื่อผู้ใช้นี้ถูกใช้งานแล้ว กรุณาใช้ชื่ออื่นหรือเข้าสู่ระบบ");
+      } else {
+        setStep(2);
+      }
+    } catch (err) {
+      setError("เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง");
+    } finally {
+      setChecking(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-
-    if (!username.trim()) {
-      setError("กรุณาระบุชื่อผู้ใช้");
-      setLoading(false);
-      return;
-    }
 
     if (password !== confirmPassword) {
       setError("รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน");
@@ -83,10 +113,10 @@ export default function RegisterPage() {
             <UserPlus className="w-7 h-7 stroke-[2.2]" />
           </div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
-            สมัครสมาชิกใหม่
+            {step === 1 ? "สมัครสมาชิกใหม่ - เลือกรุ่น" : "สมัครสมาชิกใหม่ - ตั้งรหัสผ่าน"}
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed max-w-sm">
-            สร้างบัญชีด้วยชื่อผู้ใช้เพื่อบันทึกสถิติและความคืบหน้าการท่องศัพท์
+            {step === 1 ? "ระบุชื่อผู้ใช้และเลือกรุ่นที่เตรียมสอบก่อนตั้งรหัสผ่าน" : "ตั้งรหัสผ่านสำหรับบัญชีใหม่และเริ่มใช้งานได้ทันที"}
           </p>
         </div>
 
@@ -97,96 +127,152 @@ export default function RegisterPage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-          <div className="flex flex-col gap-2.5">
-            <label className="text-xs sm:text-sm font-bold text-slate-700 tracking-wide">
-              ชื่อผู้ใช้
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                required
-                autoFocus
-                placeholder="เช่น somchai_dek68"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full bg-slate-50/80 border border-slate-200 rounded-2xl px-4 py-4 pl-12 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white font-medium transition-all"
-              />
-              <User className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+        {step === 1 ? (
+          <form onSubmit={handleNextStep} className="flex flex-col gap-6 animate-fade-in">
+            <div className="flex flex-col gap-2.5">
+              <label className="text-xs sm:text-sm font-bold text-slate-700 tracking-wide">
+                ชื่อผู้ใช้
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  required
+                  autoFocus
+                  placeholder="เช่น somchai_dek68"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="w-full bg-slate-50/80 border border-slate-200 rounded-2xl px-4 py-4 pl-12 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white font-medium transition-all"
+                />
+                <User className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+              </div>
             </div>
-          </div>
 
-          <div className="flex flex-col gap-2.5">
-            <label className="text-xs sm:text-sm font-bold text-slate-700 tracking-wide">
-              เด็กรุ่นไหน
-            </label>
-            <div className="relative">
-              <select
-                value={generation}
-                onChange={(e) => setGeneration(e.target.value)}
-                className="w-full bg-slate-50/80 border border-slate-200 rounded-2xl px-4 py-4 pl-12 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white font-bold text-slate-800 transition-all appearance-none cursor-pointer"
+            <div className="flex flex-col gap-3 animate-fade-in">
+              <label className="text-xs sm:text-sm font-bold text-slate-700 tracking-wide flex items-center gap-2">
+                <GraduationCap className="w-4 h-4 text-indigo-600" />
+                <span>คุณคือเด็กรุ่นไหน? (บังคับเลือกก่อนตั้งรหัสผ่าน)</span>
+              </label>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {GENERATION_OPTIONS.map((opt) => {
+                  const isSelected = generation === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => {
+                        setGeneration(opt.value);
+                        setError(null);
+                      }}
+                      className={`cursor-pointer px-4 py-4 rounded-2xl border font-bold text-sm sm:text-base flex items-center justify-center transition-all ${
+                        isSelected
+                          ? "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-600/20 scale-[1.02]"
+                          : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100/80 hover:border-slate-300"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={checking || !generation || !username.trim()}
+              className="mt-3 w-full py-4 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-extrabold text-sm sm:text-base rounded-2xl shadow-xl shadow-indigo-600/20 transition-all flex items-center justify-center gap-2.5 active:scale-98 cursor-pointer"
+            >
+              {checking ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>กำลังตรวจสอบ...</span>
+                </>
+              ) : (
+                <>
+                  <span>ถัดไปเพื่อตั้งรหัสผ่าน</span>
+                  <ArrowRight className="w-5 h-5" />
+                </>
+              )}
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleSubmit} className="flex flex-col gap-6 animate-fade-in">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-2xl bg-indigo-50/70 border border-indigo-200 gap-3 text-sm font-medium text-indigo-900">
+              <div className="flex items-center gap-2 overflow-hidden flex-wrap">
+                <CheckCircle2 className="w-5 h-5 text-indigo-600 shrink-0" />
+                <span className="text-xs sm:text-sm">ชื่อผู้ใช้:</span>
+                <span className="font-bold text-base">{username}</span>
+                <span className="text-indigo-300 mx-1">|</span>
+                <span className="text-xs sm:text-sm">รุ่น:</span>
+                <span className="font-bold text-base">{GENERATION_OPTIONS.find(g => g.value === generation)?.label || generation}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setStep(1);
+                  setPassword("");
+                  setConfirmPassword("");
+                  setError(null);
+                }}
+                className="text-xs sm:text-sm font-bold text-indigo-600 hover:text-indigo-800 transition-colors shrink-0 cursor-pointer self-end sm:self-center"
               >
-                {GENERATION_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-              <GraduationCap className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                เปลี่ยนรุ่น / ชื่อผู้ใช้
+              </button>
             </div>
-          </div>
 
-          <div className="flex flex-col gap-2.5">
-            <label className="text-xs sm:text-sm font-bold text-slate-700 tracking-wide">
-              ตั้งรหัสผ่านใหม่อย่างน้อย 6 ตัวอักษร
-            </label>
-            <div className="relative">
-              <input
-                type="password"
-                required
-                minLength={6}
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-slate-50/80 border border-slate-200 rounded-2xl px-4 py-4 pl-12 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white font-medium transition-all"
-              />
-              <Lock className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+            <div className="flex flex-col gap-2.5">
+              <label className="text-xs sm:text-sm font-bold text-slate-700 tracking-wide">
+                ตั้งรหัสผ่านใหม่อย่างน้อย 6 ตัวอักษร
+              </label>
+              <div className="relative">
+                <input
+                  type="password"
+                  required
+                  autoFocus
+                  minLength={6}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full bg-slate-50/80 border border-slate-200 rounded-2xl px-4 py-4 pl-12 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white font-medium transition-all"
+                />
+                <Lock className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+              </div>
             </div>
-          </div>
 
-          <div className="flex flex-col gap-2.5">
-            <label className="text-xs sm:text-sm font-bold text-slate-700 tracking-wide">
-              ยืนยันรหัสผ่าน
-            </label>
-            <div className="relative">
-              <input
-                type="password"
-                required
-                minLength={6}
-                placeholder="••••••••"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full bg-slate-50/80 border border-slate-200 rounded-2xl px-4 py-4 pl-12 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white font-medium transition-all"
-              />
-              <Lock className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+            <div className="flex flex-col gap-2.5">
+              <label className="text-xs sm:text-sm font-bold text-slate-700 tracking-wide">
+                ยืนยันรหัสผ่าน
+              </label>
+              <div className="relative">
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  placeholder="••••••••"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full bg-slate-50/80 border border-slate-200 rounded-2xl px-4 py-4 pl-12 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white font-medium transition-all"
+                />
+                <Lock className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+              </div>
             </div>
-          </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="mt-3 w-full py-4 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-extrabold text-sm sm:text-base rounded-2xl shadow-xl shadow-indigo-600/20 transition-all flex items-center justify-center gap-2.5 active:scale-98 cursor-pointer"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                <span>กำลังสร้างบัญชี...</span>
-              </>
-            ) : (
-              <span>สมัครสมาชิกและเริ่มฝึกทันที</span>
-            )}
-          </button>
-        </form>
+            <button
+              type="submit"
+              disabled={loading}
+              className="mt-3 w-full py-4 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-extrabold text-sm sm:text-base rounded-2xl shadow-xl shadow-indigo-600/20 transition-all flex items-center justify-center gap-2.5 active:scale-98 cursor-pointer"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>กำลังสร้างบัญชี...</span>
+                </>
+              ) : (
+                <span>สมัครสมาชิกและเริ่มฝึกทันที</span>
+              )}
+            </button>
+          </form>
+        )}
 
         <div className="pt-4 border-t border-slate-100 text-center text-xs sm:text-sm text-slate-600 font-medium">
           มีบัญชีผู้ใช้แล้ว?{" "}

@@ -4,13 +4,22 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { User, Lock, ArrowRight, Loader2, AlertCircle, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { User, Lock, ArrowRight, Loader2, AlertCircle, ArrowLeft, CheckCircle2, GraduationCap } from "lucide-react";
 import { clearAllGuestAndLocalData } from "@/lib/progress";
+
+const GENERATION_OPTIONS = [
+  { value: "DEK70", label: "DEK 70" },
+  { value: "DEK71", label: "DEK 71" },
+  { value: "DEK72", label: "DEK 72" },
+  { value: "DEK73", label: "DEK 73" },
+  { value: "เด็กซิ่ว", label: "เด็กซิ่ว" },
+];
 
 export default function LoginPage() {
   const router = useRouter();
-  const [mode, setMode] = useState<"CHECK" | "LOGIN" | "REGISTER">("CHECK");
+  const [mode, setMode] = useState<"CHECK" | "LOGIN" | "SELECT_GENERATION" | "REGISTER">("CHECK");
   const [username, setUsername] = useState("");
+  const [generation, setGeneration] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +51,7 @@ export default function LoginPage() {
       } else if (data.exists) {
         setMode("LOGIN");
       } else {
-        setMode("REGISTER");
+        setMode("SELECT_GENERATION");
       }
     } catch (err) {
       setError("เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง");
@@ -106,6 +115,7 @@ export default function LoginPage() {
         body: JSON.stringify({
           name: username.trim(),
           password,
+          generation,
         }),
       });
 
@@ -148,12 +158,14 @@ export default function LoginPage() {
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
             {mode === "CHECK" && "เข้าสู่ระบบ / สมัครสมาชิก"}
             {mode === "LOGIN" && "ยินดีต้อนรับกลับมา"}
+            {mode === "SELECT_GENERATION" && "สร้างบัญชีใหม่ - เลือกรุ่นของคุณ"}
             {mode === "REGISTER" && "สร้างบัญชีใหม่"}
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed max-w-sm">
             {mode === "CHECK" && "ระบุชื่อผู้ใช้เพื่อเข้าสู่ระบบหรือเริ่มต้นสร้างบัญชีใหม่"}
             {mode === "LOGIN" && "กรุณากรอกรหัสผ่านเพื่อเข้าสู่ระบบ"}
-            {mode === "REGISTER" && "ไม่พบชื่อผู้ใช้นี้ในระบบ สร้างบัญชีใหม่และเริ่มใช้งานได้ทันที"}
+            {mode === "SELECT_GENERATION" && "ไม่พบชื่อผู้ใช้นี้ในระบบ กรุณาเลือกรุ่นที่เตรียมสอบก่อนตั้งรหัสผ่าน"}
+            {mode === "REGISTER" && "ตั้งรหัสผ่านสำหรับบัญชีใหม่และเริ่มใช้งานได้ทันที"}
           </p>
         </div>
 
@@ -263,9 +275,9 @@ export default function LoginPage() {
           </form>
         )}
 
-        {/* Step 2B Form: Seamless Register (No Email Required) */}
-        {mode === "REGISTER" && (
-          <form onSubmit={handleRegister} className="flex flex-col gap-6 animate-fade-in">
+        {/* Step 2B-1: Select Generation Before Password */}
+        {mode === "SELECT_GENERATION" && (
+          <div className="flex flex-col gap-6 animate-fade-in">
             {/* Readonly Username Display with Edit Button */}
             <div className="flex items-center justify-between p-4 rounded-2xl bg-indigo-50/70 border border-indigo-200 text-sm font-medium text-indigo-900">
               <div className="flex items-center gap-3 overflow-hidden">
@@ -277,13 +289,86 @@ export default function LoginPage() {
                 type="button"
                 onClick={() => {
                   setMode("CHECK");
-                  setPassword("");
-                  setConfirmPassword("");
                   setError(null);
                 }}
                 className="text-xs sm:text-sm font-bold text-indigo-600 hover:text-indigo-800 transition-colors shrink-0 cursor-pointer"
               >
                 เปลี่ยน
+              </button>
+            </div>
+
+            {/* Generation Choice Grid */}
+            <div className="flex flex-col gap-3 animate-fade-in">
+              <label className="text-xs sm:text-sm font-bold text-slate-700 tracking-wide flex items-center gap-2">
+                <GraduationCap className="w-4 h-4 text-indigo-600" />
+                <span>คุณคือเด็กรุ่นไหน? (บังคับเลือกก่อนตั้งรหัสผ่าน)</span>
+              </label>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {GENERATION_OPTIONS.map((opt) => {
+                  const isSelected = generation === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => {
+                        setGeneration(opt.value);
+                        setError(null);
+                      }}
+                      className={`cursor-pointer px-4 py-4 rounded-2xl border font-bold text-sm sm:text-base flex items-center justify-center transition-all ${
+                        isSelected
+                          ? "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-600/20 scale-[1.02]"
+                          : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100/80 hover:border-slate-300"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              disabled={!generation}
+              onClick={() => {
+                if (generation) {
+                  setError(null);
+                  setMode("REGISTER");
+                }
+              }}
+              className="mt-2 w-full py-4 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-extrabold text-sm sm:text-base rounded-2xl shadow-xl shadow-indigo-600/20 transition-all flex items-center justify-center gap-2.5 active:scale-98 cursor-pointer"
+            >
+              <span>ถัดไปเพื่อตั้งรหัสผ่าน</span>
+              <ArrowRight className="w-5 h-5" />
+            </button>
+          </div>
+        )}
+
+        {/* Step 2B Form: Seamless Register (No Email Required) */}
+        {mode === "REGISTER" && (
+          <form onSubmit={handleRegister} className="flex flex-col gap-6 animate-fade-in">
+            {/* Readonly Username & Generation Display with Edit Button */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-2xl bg-indigo-50/70 border border-indigo-200 gap-3 text-sm font-medium text-indigo-900">
+              <div className="flex items-center gap-2 overflow-hidden flex-wrap">
+                <CheckCircle2 className="w-5 h-5 text-indigo-600 shrink-0" />
+                <span className="text-xs sm:text-sm">ชื่อผู้ใช้:</span>
+                <span className="font-bold text-base">{username}</span>
+                <span className="text-indigo-300 mx-1">|</span>
+                <span className="text-xs sm:text-sm">รุ่น:</span>
+                <span className="font-bold text-base">{GENERATION_OPTIONS.find(g => g.value === generation)?.label || generation}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setMode("SELECT_GENERATION");
+                  setPassword("");
+                  setConfirmPassword("");
+                  setError(null);
+                }}
+                className="text-xs sm:text-sm font-bold text-indigo-600 hover:text-indigo-800 transition-colors shrink-0 cursor-pointer self-end sm:self-center"
+              >
+                เปลี่ยนรุ่น
               </button>
             </div>
 
