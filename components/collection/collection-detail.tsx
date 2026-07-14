@@ -124,8 +124,8 @@ export default function CollectionDetail({
 
   const cefrInfo = getCefrBadgeProps(collection.cefrLevel || "B2");
 
-  const cleanTitle = collection.title.replace(/\s*\([^)]*\)/g, "").trim();
-  const cleanDesc = collection.description.replace(/\s*\([^)]*\)/g, "").trim();
+  const cleanTitle = collection.title.replace(/\s*\([^)]*\)/g, "").replace(/A-Level\s*82/gi, "A-Level").replace(/\b82\b/g, "").replace(/\s+/g, " ").trim();
+  const cleanDesc = collection.description.replace(/\s*\([^)]*\)/g, "").replace(/A-Level\s*82/gi, "A-Level").replace(/\b82\b/g, "").replace(/\s+/g, " ").trim();
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans pb-16">

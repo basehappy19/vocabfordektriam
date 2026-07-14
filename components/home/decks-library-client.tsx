@@ -37,7 +37,7 @@ export default function DecksLibraryClient({
     { id: "ALL", label: "ทั้งหมด", colorClass: "bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm" },
     { id: "RECOMMENDED", label: "แนะนำ", colorClass: "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm" },
     { id: "TGAT1", label: "TGAT 1", colorClass: "bg-purple-600 text-white hover:bg-purple-700 shadow-sm" },
-    { id: "A-Level", label: "A-Level 82", colorClass: "bg-blue-600 text-white hover:bg-blue-700 shadow-sm" },
+    { id: "A-Level", label: "A-Level", colorClass: "bg-blue-600 text-white hover:bg-blue-700 shadow-sm" },
     { id: "2568", label: "ปี 2568", colorClass: "bg-rose-600 text-white hover:bg-rose-700 shadow-sm" },
     { id: "2567", label: "ปี 2567", colorClass: "bg-amber-600 text-white hover:bg-amber-700 shadow-sm" },
     { id: "2566", label: "ปี 2566", colorClass: "bg-cyan-600 text-white hover:bg-cyan-700 shadow-sm" },
@@ -248,7 +248,7 @@ export default function DecksLibraryClient({
                 <div className="flex items-center justify-between border-b border-slate-200/60 pb-3">
                   <div className="flex items-center gap-2">
                     <h2 className="text-lg sm:text-xl font-bold text-slate-800 tracking-tight">
-                      A-Level 82
+                      A-Level
                     </h2>
                     <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-xs font-semibold">
                       {aLevelFiltered.length}

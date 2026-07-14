@@ -44,8 +44,8 @@ export default function CollectionCard({
   const percent = collection.totalWordsCount > 0 ? Math.round((Math.min(completedCount, collection.totalWordsCount) / collection.totalWordsCount) * 100) : 0;
 
   // Clean title & description to ensure no brackets or emojis
-  const cleanTitle = collection.title.replace(/\s*\([^)]*\)/g, "").trim();
-  const cleanDesc = collection.description.replace(/\s*\([^)]*\)/g, "").trim();
+  const cleanTitle = collection.title.replace(/\s*\([^)]*\)/g, "").replace(/A-Level\s*82/gi, "A-Level").replace(/\b82\b/g, "").replace(/\s+/g, " ").trim();
+  const cleanDesc = collection.description.replace(/\s*\([^)]*\)/g, "").replace(/A-Level\s*82/gi, "A-Level").replace(/\b82\b/g, "").replace(/\s+/g, " ").trim();
 
   return (
     <div className="group relative flex flex-col justify-between gap-4 p-5 rounded-2xl bg-white border border-slate-200/80 hover:border-slate-300 hover:shadow-md transition-all duration-200">

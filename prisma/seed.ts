@@ -71,8 +71,8 @@ async function main() {
     },
     {
       id: "alevel-68",
-      title: "A-Level 82 ปี 2568",
-      description: "คำศัพท์ยากระดับ C1-C2 จากข้อสอบ A-Level 82 ปี 2568",
+      title: "A-Level ปี 2568",
+      description: "คำศัพท์ยากระดับ C1-C2 จากข้อสอบ A-Level ปี 2568",
       category: "A-Level",
       cefrLevel: "C1",
       icon: "AL68",
@@ -83,8 +83,8 @@ async function main() {
     },
     {
       id: "alevel-67",
-      title: "A-Level 82 ปี 2567",
-      description: "คำกริยาวิชาการและศัพท์เฉพาะทาง A-Level 82 ปี 2567",
+      title: "A-Level ปี 2567",
+      description: "คำกริยาวิชาการและศัพท์เฉพาะทาง A-Level ปี 2567",
       category: "A-Level",
       cefrLevel: "C1",
       icon: "AL67",
@@ -95,8 +95,8 @@ async function main() {
     },
     {
       id: "alevel-66",
-      title: "A-Level 82 ปี 2566",
-      description: "ศัพท์เฉพาะทางเชิงวิทยาศาสตร์และสังคม A-Level 82 ปี 2566",
+      title: "A-Level ปี 2566",
+      description: "ศัพท์เฉพาะทางเชิงวิทยาศาสตร์และสังคม A-Level ปี 2566",
       category: "A-Level",
       cefrLevel: "C1-C2",
       icon: "AL66",

@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
-import { User, LogOut, LogIn, UserPlus } from "lucide-react";
+import { User, LogOut, LogIn } from "lucide-react";
 
 export function AuthNavButtons({ user }: { user?: { name?: string | null; email?: string | null } | null }) {
   if (user) {
@@ -29,17 +29,11 @@ export function AuthNavButtons({ user }: { user?: { name?: string | null; email?
     <div className="flex items-center gap-2">
       <Link
         href="/login"
-        className="cursor-pointer px-3.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center gap-1.5"
+        className="cursor-pointer px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-2"
+        title="เข้าสู่ระบบ หรือ สมัครสมาชิกใหม่"
       >
-        <LogIn className="w-3.5 h-3.5 text-slate-500" />
-        <span>เข้าสู่ระบบ</span>
-      </Link>
-      <Link
-        href="/register"
-        className="cursor-pointer px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
-      >
-        <UserPlus className="w-3.5 h-3.5" />
-        <span>สมัครสมาชิก</span>
+        <LogIn className="w-4 h-4 shrink-0" />
+        <span>เข้าสู่ระบบ / สมัครสมาชิก</span>
       </Link>
     </div>
   );
