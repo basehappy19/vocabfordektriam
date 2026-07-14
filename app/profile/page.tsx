@@ -469,7 +469,7 @@ export default function ProfilePage() {
                 ต้องการลบบัญชีและข้อมูลทั้งหมดของคุณหรือไม่?
               </span>
               <span className="text-xs text-rose-700 font-medium leading-relaxed">
-                เมื่อลบบัญชี ข้อมูลคำศัพท์ที่เคยฝึกฝน สถิติความจำ (SRS) ประวัติการเรียนรู้ และข้อมูลส่วนตัวทั้งหมดจะถูกลบออกจากระบบอย่างถาวร
+                เมื่อลบบัญชี ข้อมูลคำศัพท์ที่เคยฝึกฝน สถิติความจำ ประวัติการเรียนรู้ และข้อมูลส่วนตัวทั้งหมดจะถูกลบออกจากระบบอย่างถาวร
               </span>
             </div>
             <button
@@ -496,14 +496,11 @@ export default function ProfilePage() {
                   <h3 className="text-lg font-black text-slate-900">
                     ยืนยันการลบบัญชีผู้ใช้ถาวร?
                   </h3>
-                  <p className="text-xs text-slate-500 font-medium mt-0.5">
-                    คำเตือนจากระบบ VocabForDekTriam
-                  </p>
                 </div>
               </div>
 
               <div className="p-4 rounded-2xl bg-rose-50/70 border border-rose-100 text-rose-800 text-xs sm:text-sm font-semibold leading-relaxed">
-                ข้อมูลสถิติ ประวัติการท่องศัพท์ ความคืบหน้า (SRS) และบัญชีผู้ใช้นี้จะสูญหายทันทีและไม่สามารถกู้คืนกลับมาได้อีก คุณแน่ใจหรือไม่ที่จะดำเนินการต่อ?
+                ข้อมูลสถิติ ประวัติการท่องศัพท์ ความคืบหน้า และบัญชีผู้ใช้นี้จะสูญหายทันทีและไม่สามารถกู้คืนกลับมาได้อีก คุณแน่ใจหรือไม่ที่จะดำเนินการต่อ?
               </div>
 
               <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-2">
