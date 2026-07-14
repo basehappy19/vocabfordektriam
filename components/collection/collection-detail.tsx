@@ -282,7 +282,6 @@ export default function CollectionDetail({
             <div className="grid grid-cols-1 gap-3">
               {filteredWords.map((w, index) => {
                 const isCompleted = completedIds.includes(w.id);
-                const wordCefr = getCefrBadgeProps(w.cefrLevel || w.difficultyLevel);
 
                 const cleanExample = w.exampleSentence ? w.exampleSentence.replace(/[\u10000-\u10FFFF]/g, "").trim() : null;
                 const cleanTarget = w.exampleTarget ? w.exampleTarget.replace(/\s*\([^)]*\)/g, "").replace(/[\u10000-\u10FFFF]/g, "").trim() : null;
@@ -313,9 +312,6 @@ export default function CollectionDetail({
                           )}
                           <span className="text-[11px] font-semibold uppercase px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200/60">
                             {w.partOfSpeech}
-                          </span>
-                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200/60">
-                            {wordCefr.cefr}
                           </span>
                         </div>
 
@@ -397,7 +393,6 @@ export default function CollectionDetail({
                 words
                   .filter((w) => completedIds.includes(w.id))
                   .map((w, idx) => {
-                    const wordCefr = getCefrBadgeProps(w.cefrLevel || w.difficultyLevel);
                     return (
                       <div
                         key={w.id}
@@ -411,9 +406,6 @@ export default function CollectionDetail({
                               {w.phonetic && (
                                 <span className="text-xs font-mono text-slate-500">/{w.phonetic}/</span>
                               )}
-                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200/60">
-                                {wordCefr.cefr}
-                              </span>
                             </div>
                             <p className="text-xs font-medium text-slate-700 mt-0.5">{w.meaning}</p>
                           </div>

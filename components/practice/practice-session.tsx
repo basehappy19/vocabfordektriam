@@ -4,7 +4,8 @@ import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import TTSButton from "@/components/tts/tts-button";
 import { getCefrBadgeProps, getCefrFromNumber } from "@/lib/cefr";
-import { recordGuestWordCompletion } from "@/lib/progress";
+import { recordGuestWordCompletion, getCompletedWordIds } from "@/lib/progress";
+import { getCollectionMeta } from "@/lib/collection-meta";
 
 interface VocabData {
   id: string;
@@ -41,6 +42,9 @@ interface VocabData {
 
 export interface PracticeSessionProps {
   initialCategory?: string;
+  initialCollectionId?: string;
+  initialVocab?: VocabData | null;
+  initialMode?: "GUEST" | "AUTHENTICATED";
 }
 
 const SYNONYM_DICTIONARY: Record<string, string[]> = {
@@ -257,11 +261,16 @@ interface HistorySessionItem {
   practiceDirection: "TH_TO_EN" | "EN_TO_TH";
 }
 
-export default function PracticeSession({ initialCategory = "" }: PracticeSessionProps) {
-  const [vocab, setVocab] = useState<VocabData | null>(null);
-  const [loading, setLoading] = useState(true);
+export default function PracticeSession({
+  initialCategory = "",
+  initialCollectionId = "",
+  initialVocab = null,
+  initialMode = "GUEST",
+}: PracticeSessionProps) {
+  const [vocab, setVocab] = useState<VocabData | null>(initialVocab);
+  const [loading, setLoading] = useState<boolean>(!initialVocab);
   const [error, setError] = useState<string | null>(null);
-  const [mode, setMode] = useState<"GUEST" | "AUTHENTICATED">("GUEST");
+  const [mode, setMode] = useState<"GUEST" | "AUTHENTICATED">(initialMode);
 
   const [practiceDirection, setPracticeDirection] = useState<"TH_TO_EN" | "EN_TO_TH">("TH_TO_EN");
   const [showAnswer, setShowAnswer] = useState(false);
@@ -270,9 +279,10 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
   const [selectedCategory, setSelectedCategory] = useState<string>(
     initialCategory === "all" ? "" : initialCategory
   );
-  const [selectedCollectionId, setSelectedCollectionId] = useState<string>(() =>
-    typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("collectionId") || "" : ""
-  );
+  const [selectedCollectionId, setSelectedCollectionId] = useState<string>(() => {
+    if (initialCollectionId) return initialCollectionId;
+    return typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("collectionId") || "" : "";
+  });
   const [typedInput, setTypedInput] = useState("");
 
   // Local progress tracking for guest mode
@@ -460,8 +470,28 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
       console.error("Failed restoring practice state from localStorage:", e);
     }
 
+    if (initialVocab) {
+      setHistory([
+        {
+          vocab: initialVocab,
+          mode: initialMode,
+          showAnswer: false,
+          answerStatus: "IDLE",
+          typedInput: "",
+          hasUserDrawn: false,
+          drawingDataUrl: null,
+          practiceDirection: "TH_TO_EN",
+        },
+      ]);
+      setHistoryIndex(0);
+      setVocab(initialVocab);
+      setMode(initialMode);
+      setLoading(false);
+      return;
+    }
+
     fetchNextVocab(false);
-  }, [selectedCollectionId, selectedCategory]); // Initial check and load on mount
+  }, [selectedCollectionId, selectedCategory, initialVocab, initialMode]); // Initial check and load on mount
 
   useEffect(() => {
     if (typeof window === "undefined" || history.length === 0 || historyIndex < 0 || !vocab) return;
@@ -723,9 +753,13 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
   // Calculate Progress Stats based on exact word order in collection ("เรียงตามนั้น")
   const totalWords = vocab?.meta?.progress?.totalWords || 1;
   const dbCompleted = vocab?.meta?.progress?.completedWords || 0;
-  const completedWords = mode === "AUTHENTICATED" ? dbCompleted : guestCompletedCount;
+  const activeColKey = selectedCollectionId || vocab?.collectionId || selectedCategory || "";
+  const guestProgressMapIds = typeof window !== "undefined" && activeColKey ? getCompletedWordIds(activeColKey) : [];
+  const completedWords = mode === "AUTHENTICATED"
+    ? dbCompleted
+    : (activeColKey && guestProgressMapIds.length > 0 ? guestProgressMapIds.length : guestCompletedCount);
   const currentWordNumber = vocab?.meta?.progress?.wordIndex || (historyIndex >= 0 ? Math.min(totalWords, historyIndex + 1) : 1);
-  const percent = Math.min(100, Math.round((currentWordNumber / totalWords) * 100));
+  const completedPercent = Math.min(100, Math.round((completedWords / totalWords) * 100));
 
   // =========================================================================
   // RULE 1: "ถ้าถูกให้เอาคำที่ตอบเป็นหลัก และคำหลัก มาอยู่ในคำย่อย"
@@ -957,10 +991,17 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
                   <span>กลับหน้าหลัก</span>
                 </Link>
                 <span className="px-2.5 py-1 bg-indigo-50 text-indigo-700 rounded-md text-xs font-bold border border-indigo-200/60">
-                  {COLLECTION_TITLES[vocab.collectionId || ""] || vocab.collectionId || "TGAT 1"}
+                  {(() => {
+                    const colKey = selectedCollectionId || vocab.collectionId || selectedCategory || "";
+                    const meta = getCollectionMeta(colKey);
+                    return meta ? meta.title : colKey || "TGAT 1";
+                  })()}
                 </span>
                 {(() => {
-                  const cefr = getCefrBadgeProps(vocab.cefrLevel || vocab.difficultyLevel);
+                  const colKey = selectedCollectionId || vocab.collectionId || selectedCategory || "";
+                  const meta = getCollectionMeta(colKey);
+                  if (!meta || !meta.cefrLevel) return null;
+                  const cefr = getCefrBadgeProps(meta.cefrLevel);
                   return (
                     <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold border ${cefr.colorClass}`}>
                       {cefr.badgeText}
@@ -989,20 +1030,17 @@ export default function PracticeSession({ initialCategory = "" }: PracticeSessio
 
               {/* Word Progress Bar (% & Counter) */}
               <div className="w-full sm:w-auto flex items-center gap-3">
-                <div className="w-full sm:w-64 flex flex-col gap-1.5">
+                <div className="w-full sm:w-80 flex flex-col gap-1.5">
                   <div className="flex items-center justify-between text-xs font-bold text-slate-700">
                     <span>
-                      คำที่ {currentWordNumber} / {totalWords}{" "}
-                      <span className="text-slate-400 font-normal text-[11px]">
-                        (เหลือ {Math.max(0, totalWords - currentWordNumber)} คำ)
-                      </span>
+                      คำที่ {currentWordNumber} / {totalWords} | ความคืบหน้า {completedWords} คำ
                     </span>
-                    <span className="text-indigo-600 font-mono font-bold">{percent}%</span>
+                    <span className="text-indigo-600 font-mono font-bold">{completedPercent}%</span>
                   </div>
                   <div className="w-full h-2 bg-slate-200/80 rounded-full overflow-hidden p-0 border border-slate-200">
                     <div
                       className="h-full bg-indigo-600 rounded-full transition-all duration-500 ease-out"
-                      style={{ width: `${percent}%` }}
+                      style={{ width: `${completedPercent}%` }}
                     />
                   </div>
                 </div>
