@@ -1108,7 +1108,7 @@ export default function PracticeSession({
                   <ArrowLeft className="w-4 h-4 shrink-0" />
                   <span className="hidden sm:inline">กลับหน้าหลัก</span>
                 </Link>
-                <span className="px-2.5 py-1 bg-indigo-50 text-indigo-700 rounded-md text-xs font-bold border border-indigo-200/60">
+                <span className="text-sm sm:text-base font-extrabold text-slate-900 tracking-tight ml-1">
                   {(() => {
                     const colKey = selectedCollectionId || vocab.collectionId || selectedCategory || "";
                     const meta = getCollectionMeta(colKey);
